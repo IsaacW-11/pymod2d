@@ -5,6 +5,7 @@ from pymod.utils.exceptions import MissingComponentError
 
 if TYPE_CHECKING:
     from .component import Component
+    from .scene import Scene
 
 T = TypeVar("T", bound="Component")
 
@@ -15,10 +16,12 @@ class GameObject:
 
     Attributes:
         _components: Dictionary to store all attached components.
+        scene: Stores the scene that the GameObject belongs to.
     """
 
     def __init__(self):
         self._components: dict[type[Component], Component] = {}
+        self.scene: Scene | None = None
 
     def __len__(self) -> int:
         return len(self._components)
@@ -94,3 +97,13 @@ class GameObject:
             True if the component exists in the GameObject, False otherwise.
         """
         return component_type in self._components
+
+    def _update(self):
+        """Internal method to update all components attached to this GameObject."""
+        for component in self._components.values():
+            component._update()
+
+    def _draw(self):
+        """Internal method to draw all components attached to this GameObject."""
+        for component in self._components.values():
+            component._draw()

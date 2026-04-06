@@ -61,7 +61,7 @@ class Component:
         """
         self.owner.remove_component(type(self))
 
-    def _tick(self):
+    def _update(self):
         """Method to decide whether ``on_start()`` should be called, or if only ``update()`` is called.
 
         This method should only be called internally, and should never be accessed by the public API.
