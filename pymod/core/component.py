@@ -19,6 +19,9 @@ class Component:
         self.enabled: bool = True
         self._started: bool = False
 
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}(owner={type(self.owner).__name__})"
+
     def on_attach(self):
         """Called by GameObject.add() the moment the component is added.
 
