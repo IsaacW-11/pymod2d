@@ -26,6 +26,10 @@ class GameObject:
     def __len__(self) -> int:
         return len(self._components)
 
+    def __repr__(self) -> str:
+        component_names = [type(component) for component in self._components.values()]
+        return f"{type(self).__name__}(components={component_names})"
+
     def add_component(self, component: Component) -> GameObject:
         """Method to add a component to the game object.
 
