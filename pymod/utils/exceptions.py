@@ -7,3 +7,10 @@ class MissingComponentError(Exception):
 class EmptySceneManagerStack(Exception):
     """Raised when the scene manager stack is accessed, but is empty."""
     pass
+
+class ExistingGameInstance(Exception):
+    """Raised when a second game instance is attempted to be created."""
+    pass
+
+class MissingGameInstance(Exception):
+    """Raised when trying to access a non-existent game instance."""
