@@ -82,6 +82,11 @@ class SceneManager:
         if self._stack:
             self.current._update()
 
+    def _fixed_update(self):
+        """Internal method to update the current scene. Used for physics based calculations."""
+        if self._stack:
+            self.current._fixed_update()
+
     def _draw(self):
         """Internal method to draw the current scene."""
         if self._stack:

@@ -41,6 +41,12 @@ class Component:
         """Called once every frame."""
         pass
 
+    def fixed_update(self):
+        """Always called every 1/60th of a second. 
+        
+        Used for physics based calculations.
+        """
+
     def draw(self):
         """Called once every frame after update."""
         pass
@@ -74,6 +80,14 @@ class Component:
             self.on_start()
         if self.enabled:
             self.update()
+
+    def _fixed_update(self):
+        """Same as ``_update()``, but always runs every 1/60th of a second."""
+        if not self._started:
+            self._started = True
+            self.on_start()
+        if self.enabled:
+            self.fixed_update()
 
     def _draw(self):
         """Method to decide if component should be drawn or not.

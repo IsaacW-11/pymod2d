@@ -107,6 +107,11 @@ class GameObject:
         for component in self._components.values():
             component._update()
 
+    def _fixed_update(self):
+        """Internal method to update all components attached to this GameObject. Used for physics based calculations."""
+        for component in self._components.values():
+            component._fixed_update()
+
     def _draw(self):
         """Internal method to draw all components attached to this GameObject."""
         for component in self._components.values():

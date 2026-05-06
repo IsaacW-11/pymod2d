@@ -4,7 +4,8 @@ This file is used for testing new or WIP features for pymod.
 It is temporary and will not be in the final version.
 """
 
-# This current example utilises the new TimeManager and Timer objects, to make a background that randomly changes colour every second.
+# This current example utilises the new TimeManager, Timer, and Stopwatch objects, to make a background that randomly changes colour every second.
+# It also utilises and tests fixed_update method, and the Component, GameObject, Scene architecture
 
 import pymod
 import random
@@ -26,7 +27,7 @@ class GameStopwatch(pymod.Component):
     def on_attach(self):
         self.stopwatch = pymod.time.add_stopwatch(pymod.Stopwatch().start())
 
-    def update(self):
+    def fixed_update(self):
         print(self.stopwatch.elapsed)
 
 class MyScene(pymod.Scene):

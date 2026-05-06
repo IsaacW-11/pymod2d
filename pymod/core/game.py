@@ -48,6 +48,8 @@ class Game:
 
         self.running: bool = False
 
+        self._accumulator: float = 0.0
+
         pygame.init()
         self.screen: pygame.Surface = pygame.display.set_mode((self.width, self.height))
         pygame.display.set_caption(self.title)
@@ -73,11 +75,20 @@ class Game:
                 if event.type == pygame.QUIT:
                     self.running = False
 
-            self.scenes._update()
             self.time._update(dt)
+            self.scenes._update()
 
-            self.screen.fill((0, 0, 0))
+            # fixed update
+            self._accumulator += self.time.delta
+            fixed_dt = self.time.fixed_delta
+
+            while self._accumulator >= fixed_dt:
+                self.scenes._fixed_update()
+                self._accumulator -= fixed_dt
+
+            self.screen.fill((0, 0, 0)) # clears previous frames display
             self.scenes._draw()
+
             pygame.display.flip()
 
         self._shutdown()

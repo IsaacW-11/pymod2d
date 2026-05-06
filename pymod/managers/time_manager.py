@@ -55,11 +55,19 @@ class TimeManager:
 
     @property
     def fixed_delta(self) -> float:
-        """Delta time capped at a value of 1/20th of a second, scaled by time_scale.
+        """Always returns 1/60th of a second. Takes into account time_scale.
 
-        Use for game physics to ensure frame stutters don't affect physics calculations.
+        Use in fixed_update loop for physics based calculations.
         """
-        return min(self._delta, 0.05) * self._time_scale
+        return 1/60 * self.time_scale
+    
+    @property
+    def unscaled_fixed_delta(self) -> float:
+        """Always returns 1/60th. Ignores time_scale.
+        
+        Use in fixed_update loop for physics based calculations.
+        """
+        return 1/60
 
     @property
     def elapsed(self) -> float:

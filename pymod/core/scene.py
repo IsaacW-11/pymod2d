@@ -83,6 +83,11 @@ class Scene:
         for game_object in self._game_objects:
             game_object._update()
 
+    def _fixed_update(self):
+        """Internal method to update all GameObjects. Used for physics based calculations."""
+        for game_object in self._game_objects:
+            game_object._fixed_update()
+
     def _draw(self):
         """Internal method to draw all GameObjects"""
         for game_object in self._game_objects:
