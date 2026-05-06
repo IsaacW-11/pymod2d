@@ -158,7 +158,7 @@ class TimeManager:
             stopwatch._tick(self.unscaled_delta, self.delta)
 
         for timer in self._timers[:]:
-            timer._tick(self.delta)
+            timer._tick(self.unscaled_delta, self.delta)
             if timer._completed and not timer.repeat:
                 self._timers.remove(timer)
 

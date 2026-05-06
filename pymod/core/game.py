@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING
 
 import pygame
 from .scene_manager import SceneManager
+from ..managers.time_manager import TimeManager
 from pymod.utils.exceptions import ExistingGameInstance, MissingGameInstance
 
 if TYPE_CHECKING:
@@ -54,6 +55,7 @@ class Game:
 
         # managers
         self.scenes: SceneManager = SceneManager()
+        self.time: TimeManager = TimeManager()
 
     def run(self, start_scene: Scene):
         """Starts the game loop.
@@ -65,13 +67,14 @@ class Game:
 
         self.running = True
         while self.running:
-            self._clock.tick(self.fps)
+            dt = self._clock.tick(self.fps) / 1000
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     self.running = False
 
             self.scenes._update()
+            self.time._update(dt)
 
             self.screen.fill((0, 0, 0))
             self.scenes._draw()

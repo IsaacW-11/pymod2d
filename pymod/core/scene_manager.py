@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from pymod.utils.exceptions import EmptySceneManagerStack
+import pymod
 
 if TYPE_CHECKING:
     from .scene import Scene
@@ -36,6 +37,7 @@ class SceneManager:
             self.current.on_pause()
         self._stack.append(scene)
         scene.on_enter()
+        pymod.time._reset_scene_time()
 
     def pop(self):
         """Pops the current active scene off the stack.
@@ -67,6 +69,7 @@ class SceneManager:
             self._stack.pop()
         self._stack.append(scene)
         scene.on_enter()
+        pymod.time._reset_scene_time()
 
     def clear(self):
         """Clears all scenes from the stack."""
