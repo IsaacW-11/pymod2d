@@ -14,3 +14,8 @@ class ExistingGameInstance(Exception):
 
 class MissingGameInstance(Exception):
     """Raised when trying to access a non-existent game instance."""
+    pass
+
+class MissingAction(Exception):
+    """Raised when trying to access a non-existent action."""
+    pass

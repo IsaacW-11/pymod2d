@@ -5,6 +5,7 @@ from .core import SceneManager
 from .core import Game
 
 from .managers import TimeManager
+from .managers import InputManager
 
 from .utils import Timer
 from .utils import Stopwatch
@@ -18,3 +19,4 @@ class _ManagerProxy:
 
 scenes: SceneManager = _ManagerProxy('scenes')
 time: TimeManager = _ManagerProxy('time')
+input: InputManager = _ManagerProxy('input')

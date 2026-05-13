@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING
 
 import pygame
 from .scene_manager import SceneManager
+from .. import InputManager
 from ..managers.time_manager import TimeManager
 from pymod.utils.exceptions import ExistingGameInstance, MissingGameInstance
 
@@ -58,6 +59,7 @@ class Game:
         # managers
         self.scenes: SceneManager = SceneManager()
         self.time: TimeManager = TimeManager()
+        self.input: InputManager = InputManager()
 
     def run(self, start_scene: Scene):
         """Starts the game loop.
@@ -75,7 +77,10 @@ class Game:
                 if event.type == pygame.QUIT:
                     self.running = False
 
+                self.input._handle_event(event)
+
             self.time._update(dt)
+            self.input._update()
             self.scenes._update()
 
             # fixed update
