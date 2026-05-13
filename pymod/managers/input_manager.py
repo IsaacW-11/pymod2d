@@ -489,7 +489,7 @@ class InputManager:
         self._listening_callback = None
 
     # INTERNAL METHODS
-    def _update(self):
+    def _update(self) -> None:
         """Internal method called every frame by Game to update input state."""
         # save previous state
         self._keys_previous = self._keys_current.copy()
@@ -501,10 +501,10 @@ class InputManager:
 
         # read fresh state from pygame
         pressed_keys = pygame.key.get_pressed()
-        self._keys_current = {i for i, pressed in enumerate(pressed_keys) if pressed}
+        self._keys_current = {i for i in range(len(pressed_keys)) if pressed_keys[i]}
 
         mouse_buttons = pygame.mouse.get_pressed()
-        self._mouse_buttons_current = {i for i, pressed in enumerate(mouse_buttons) if pressed}
+        self._mouse_buttons_current = {i for i in range(len(mouse_buttons)) if mouse_buttons[i]}
 
         self._mouse_pos = pygame.mouse.get_pos()
         self._mouse_delta = (
