@@ -15,7 +15,7 @@ class RandomColour(pymod.Component):
         self.screen = pymod.Game.get().screen
         self.colour = (0, 0, 0)
         self.change_colour()
-        pymod.time.add_timer(pymod.Timer(1, self.change_colour, True).start())
+        pymod.time.add_timer(pymod.Timer(0.01, self.change_colour, True).start())
 
     def change_colour(self):
         self.colour = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))

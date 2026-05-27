@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING
 
 import pygame
 from .scene_manager import SceneManager
+from ..managers.screen_manager import ScreenManager
 from ..managers.input_manager import InputManager
 from ..managers.time_manager import TimeManager
 from pymod.utils.exceptions import ExistingGameInstance, MissingGameInstance
@@ -60,6 +61,7 @@ class Game:
         self.scenes: SceneManager = SceneManager()
         self.time: TimeManager = TimeManager()
         self.input: InputManager = InputManager()
+        self.screen_manager: ScreenManager = ScreenManager(title=self.title) # temp name until naming conflict with self.screen is resolved
 
     def run(self, start_scene: Scene):
         """Starts the game loop.
@@ -78,6 +80,7 @@ class Game:
                     self.running = False
 
                 self.input._handle_event(event)
+                self.screen_manager._handle_event(event)
 
             self.time._update(dt)
             self.input._update()
@@ -93,6 +96,7 @@ class Game:
 
             self.screen.fill((0, 0, 0)) # clears previous frames display
             self.scenes._draw()
+            self.screen_manager._present()
 
             pygame.display.flip()
 
