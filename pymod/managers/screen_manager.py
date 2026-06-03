@@ -1,5 +1,6 @@
 from __future__ import annotations
 from enum import Enum, auto
+import os
 
 import pygame
 
@@ -78,6 +79,7 @@ class ScreenManager:
            _render_surface: Surface everything renders to.
            _scale_rect: Rect where render surface is drawn on window.
            _scale_factor: Current scale factor from render to window.
+           _custom_flags: Integer to store custom pygame display flags.
        """
     def __init__(self,
                  title: str = "Untitled Project",
@@ -102,6 +104,12 @@ class ScreenManager:
         self._render_surface: pygame.Surface = None
         self._scale_rect: pygame.Rect = pygame.Rect(0, 0, *window_size)
         self._scale_factor: float = 1.0
+
+        self._custom_flags: int = 0
+
+        # store native resolution BEFORE any set_mode is called
+        info = pygame.display.Info()
+        self._native_resolution: tuple[int, int] = (info.current_w, info.current_h)
 
         self._apply_display_mode()
 
@@ -283,8 +291,7 @@ class ScreenManager:
         Returns:
             Tuple of (width, height) in pixels.
         """
-        info = pygame.display.Info()
-        return (info.current_w, info.current_h)
+        return self._native_resolution
 
     # DISPLAY MODE
     def set_display_mode(self, mode: DisplayMode):
@@ -364,19 +371,25 @@ class ScreenManager:
         self._vsync = enabled
         self._apply_display_mode()
 
-    def set_resizable(self, enabled: bool) -> None:
-        """Allow or prevent the user from resizing the window.
+    def add_display_flag(self, flag: int):
+        """Adds display flag.
 
         Args:
-            enabled: Whether the window should be resizable.
+            flag: Pygame integer constant for the display flag.
         """
-        flags = self._get_display_flags()
-        if enabled:
-            flags |= pygame.RESIZABLE
-        else:
-            flags &= ~pygame.RESIZABLE
+        self._custom_flags |= flag
 
-        self._window_surface = pygame.display.set_mode(self._window_size, flags, vsync=1 if self._vsync else 0)
+        self._apply_display_mode()
+
+    def remove_display_flag(self, flag: int):
+        """Removes display flag.
+
+        Args:
+            flag: Pygame integer constant for the display flag.
+        """
+        self._custom_flags &= ~flag
+
+        self._apply_display_mode()
 
     # COORDINATE CONVERSION
     def window_to_render_coordinates(self, window_pos: tuple[int, int]) -> tuple[int, int]:
@@ -439,17 +452,29 @@ class ScreenManager:
 
     # INTERNAL METHODS
     def _apply_display_mode(self):
-        """Internal method to apply current display mode settings."""
-        flags = self._get_display_flags()
         vsync = 1 if self._vsync else 0
 
         if self._display_mode == DisplayMode.WINDOWED:
-            self._window_surface = pygame.display.set_mode(self._window_size, flags, vsync=vsync)
+            # center window
+            native_w, native_h = self._native_resolution
+            x = (native_w - self._window_size[0]) // 2
+            y = (native_h - self._window_size[1]) // 2
+            os.environ['SDL_VIDEO_WINDOW_POS'] = f'{x},{y}'
+            self._window_surface = pygame.display.set_mode(
+                self._window_size, self._get_display_flags(), vsync=vsync
+            )
         elif self._display_mode == DisplayMode.FULLSCREEN:
-            self._window_surface = pygame.display.set_mode((0, 0), flags | pygame.FULLSCREEN, vsync=vsync)
+            self._window_surface = pygame.display.set_mode(
+                (0, 0), pygame.FULLSCREEN, vsync=vsync
+            )
             self._window_size = self._window_surface.get_size()
         elif self._display_mode == DisplayMode.BORDERLESS:
-            self._window_surface = pygame.display.set_mode((0, 0), flags | pygame.NOFRAME, vsync=vsync)
+            # must set position to 0,0 before creating borderless window
+            os.environ['SDL_VIDEO_WINDOW_POS'] = '0,0'
+            native_w, native_h = self._native_resolution
+            self._window_surface = pygame.display.set_mode(
+                (native_w, native_h), pygame.NOFRAME, vsync=vsync
+            )
             self._window_size = self._window_surface.get_size()
 
         pygame.display.set_caption(self._title)
@@ -457,12 +482,7 @@ class ScreenManager:
 
     def _get_display_flags(self) -> int:
         """Pygame display flags."""
-        flags = 0
-
-        if self._display_mode == DisplayMode.WINDOWED:
-            flags |= pygame.RESIZABLE
-
-        return flags
+        return self._custom_flags
 
     def _recalculate_render_surface(self):
         """Recalculate render surface and scale rect."""
@@ -562,7 +582,10 @@ class ScreenManager:
         if self._scale_rect.size == render_size:
             self._window_surface.blit(self._render_surface, self._scale_rect)
         else:
-            scaled = pygame.transform.scale(self._render_surface, self._scale_rect.size)
+            if self.scale_fit == ScaleFit.INTEGER:
+                scaled = pygame.transform.scale(self._render_surface, self._scale_rect.size)
+            else:
+                scaled = pygame.transform.smoothscale(self._render_surface, self._scale_rect.size)
             self._window_surface.blit(scaled, self._scale_rect)
 
         pygame.display.flip()

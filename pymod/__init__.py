@@ -21,4 +21,4 @@ class _ManagerProxy:
 scenes: SceneManager = _ManagerProxy('scenes')
 time: TimeManager = _ManagerProxy('time')
 input: InputManager = _ManagerProxy('input')
-screen: ScreenManager = _ManagerProxy('screen')
+screen_manager: ScreenManager = _ManagerProxy('screen_manager')

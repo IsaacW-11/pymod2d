@@ -94,7 +94,7 @@ class Game:
                 self.scenes._fixed_update()
                 self._accumulator -= fixed_dt
 
-            self.screen.fill((0, 0, 0)) # clears previous frames display
+            self.screen_manager.render_surface.fill((0, 0, 0)) # clears previous frames display
             self.scenes._draw()
             self.screen_manager._present()
 
