@@ -20,7 +20,7 @@ class TimeManager:
         _stopwatches: List to store active stopwatches. Used to update automatically.
     """
 
-    def __init__(self, fps_history_size=60):
+    def __init__(self, fps_history_size):
         self._time_scale: float = 1.0
         self._delta: float = 0.0
         self._elapsed: float = 0.0

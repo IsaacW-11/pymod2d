@@ -12,7 +12,7 @@ import random
 
 class RandomColour(pymod.Component):
     def on_attach(self):
-        self.screen = pymod.Game.get().screen
+        self.screen = pymod.screen.render_surface
         self.colour = (0, 0, 0)
         self.change_colour()
         pymod.time.add_timer(pymod.Timer(0.01, self.change_colour, True).start())

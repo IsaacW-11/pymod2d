@@ -6,7 +6,10 @@ from .scene_manager import SceneManager
 from ..managers.screen_manager import ScreenManager
 from ..managers.input_manager import InputManager
 from ..managers.time_manager import TimeManager
-from pymod.utils.exceptions import ExistingGameInstance, MissingGameInstance
+from ..utils.exceptions import ExistingGameInstance, MissingGameInstance
+from ..configs.screen_config import ScreenConfig
+from ..configs.input_config import InputConfig
+from ..configs.time_config import TimeConfig
 
 if TYPE_CHECKING:
     from .scene import Scene
@@ -27,14 +30,16 @@ class Game:
 
     _instance: Game | None = None
 
-    def __init__(self, title: str="Untitled Project", width: int=1920, height: int=1080, fps: int=60):
+    def __init__(self,
+                 screen_config: ScreenConfig = None,
+                 time_config: TimeConfig = None,
+                 input_config: InputConfig = None,):
         """Initializes game instance.
 
         Args:
-            title: The title of the game. Defaults to 'Untitled Project'.
-            width: Width of game window. Defaults to 1920.
-            height: Height of game window. Defaults to 1080.
-            fps: Frame per second cap of game. Defaults to 60. Can be changed later on.
+            screen_config: Config file for the ScreenManager.
+            time_config: Config file for the TimeManager.
+            input_config: Config file for the InputManager..
 
         Raises:
             ExistingGameInstance: The game instance already exists.
@@ -43,25 +48,35 @@ class Game:
             raise ExistingGameInstance("Only one Game Instance can exist at a time.")
         Game._instance = self
 
-        self.title: str = title
-        self.width: int = width
-        self.height: int = height
-        self.fps: int = fps
+        self.screen_config: ScreenConfig = screen_config or ScreenConfig()
+        self.time_config: TimeConfig = time_config or TimeConfig()
+        self.input_config: InputConfig = input_config or InputConfig()
+
+        self.title: str = self.screen_config.title
+        self.width: int = self.screen_config.window_size[0]
+        self.height: int = self.screen_config.window_size[1]
+        self.fps: int = self.time_config.fps
 
         self.running: bool = False
 
         self._accumulator: float = 0.0
 
         pygame.init()
-        self.screen: pygame.Surface = pygame.display.set_mode((self.width, self.height))
         pygame.display.set_caption(self.title)
         self._clock: pygame.time.Clock = pygame.time.Clock()
 
         # managers
         self.scenes: SceneManager = SceneManager()
-        self.time: TimeManager = TimeManager()
-        self.input: InputManager = InputManager()
-        self.screen_manager: ScreenManager = ScreenManager(title=self.title) # temp name until naming conflict with self.screen is resolved
+        self.time: TimeManager = TimeManager(fps_history_size=self.time_config.fps_history_size)
+        self.input: InputManager = InputManager(default_bindings=self.input_config.default_bindings)
+        self.screen: ScreenManager = ScreenManager(title=self.screen_config.title,
+                                                           window_size=self.screen_config.window_size,
+                                                           display_mode=self.screen_config.display_mode,
+                                                           game_scale_mode=self.screen_config.game_scale_mode,
+                                                           scale_fit=self.screen_config.scale_fit,
+                                                           base_resolution=self.screen_config.base_resolution,
+                                                           target_resolution=self.screen_config.target_resolution,
+                                                           vsync=self.screen_config.vsync)
 
     def run(self, start_scene: Scene):
         """Starts the game loop.
@@ -80,7 +95,7 @@ class Game:
                     self.running = False
 
                 self.input._handle_event(event)
-                self.screen_manager._handle_event(event)
+                self.screen._handle_event(event)
 
             self.time._update(dt)
             self.input._update()
@@ -94,9 +109,9 @@ class Game:
                 self.scenes._fixed_update()
                 self._accumulator -= fixed_dt
 
-            self.screen_manager.render_surface.fill((0, 0, 0)) # clears previous frames display
+            self.screen.render_surface.fill((0, 0, 0)) # clears previous frames display
             self.scenes._draw()
-            self.screen_manager._present()
+            self.screen._present()
 
             pygame.display.flip()
 

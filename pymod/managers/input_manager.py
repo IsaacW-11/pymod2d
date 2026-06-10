@@ -14,7 +14,7 @@ class InputManager:
     Actions are defined by name and can be bound to multiple inputs.
     This allows easy rebinding in settings menus and multi-device support.
     """
-    def __init__(self):
+    def __init__(self, default_bindings: dict[str, list] = None):
         # keyboard state
         self._keys_current: set[int] = set()
         self._keys_previous: set[int] = set()
@@ -78,6 +78,11 @@ class InputManager:
         # input listening for rebinding
         self._listening: bool = False
         self._listening_callback = None
+
+        # load default binds
+        if default_bindings:
+            for action, bindings in default_bindings.items():
+                self.create_action(action, bindings)
 
     # ACTION BASED INPUT
     def action_pressed(self, action: str) -> bool:

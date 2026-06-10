@@ -11,6 +11,10 @@ from .managers import ScreenManager
 from .utils import Timer
 from .utils import Stopwatch
 
+from .managers.screen_manager import ScaleFit
+from .managers.screen_manager import GameScaleMode
+from .managers.screen_manager import DisplayMode
+
 class _ManagerProxy:
     def __init__(self, manager_name: str):
         self._name = manager_name
@@ -21,4 +25,4 @@ class _ManagerProxy:
 scenes: SceneManager = _ManagerProxy('scenes')
 time: TimeManager = _ManagerProxy('time')
 input: InputManager = _ManagerProxy('input')
-screen_manager: ScreenManager = _ManagerProxy('screen_manager')
+screen: ScreenManager = _ManagerProxy('screen')

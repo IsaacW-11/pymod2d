@@ -82,14 +82,14 @@ class ScreenManager:
            _custom_flags: Integer to store custom pygame display flags.
        """
     def __init__(self,
-                 title: str = "Untitled Project",
-                 window_size: tuple[int, int] = (1280, 720),
-                 display_mode: DisplayMode = DisplayMode.WINDOWED,
-                 game_scale_mode: GameScaleMode = GameScaleMode.EXPAND,
-                 scale_fit: ScaleFit = ScaleFit.FIT,
-                 base_resolution: tuple[int, int] = (1280, 720),
-                 target_resolution: tuple[int, int] = (1920, 1080),
-                 vsync: bool = False):
+                 title: str,
+                 window_size: tuple[int, int],
+                 display_mode: DisplayMode,
+                 game_scale_mode: GameScaleMode,
+                 scale_fit: ScaleFit,
+                 base_resolution: tuple[int, int],
+                 target_resolution: tuple[int, int],
+                 vsync: bool):
 
         self._title: str = title
         self._window_size: tuple[int, int] = window_size
