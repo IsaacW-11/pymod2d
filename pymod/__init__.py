@@ -15,6 +15,10 @@ from .managers.screen_manager import ScaleFit
 from .managers.screen_manager import GameScaleMode
 from .managers.screen_manager import DisplayMode
 
+from .configs.screen_config import ScreenConfig
+from .configs.input_config import InputConfig
+from .configs.time_config import TimeConfig
+
 class _ManagerProxy:
     def __init__(self, manager_name: str):
         self._name = manager_name
