@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 
 import pygame
 
-from pymod import EventManager
+from ..managers.event_manager import EventManager
 from .scene_manager import SceneManager
 from ..managers.screen_manager import ScreenManager
 from ..managers.input_manager import InputManager

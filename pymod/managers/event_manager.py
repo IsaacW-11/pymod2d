@@ -9,8 +9,7 @@ class Event:
     Inherit from this to get cancellation support.
     Events do not have to inherit from this. Any object can be an event.
     """
-    def __init__(self):
-        self._cancelled: bool = False
+    _cancelled: bool = False
 
     def cancel(self) -> None:
         """Cancel this event.
