@@ -2,6 +2,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pygame
+
+from pymod import EventManager
 from .scene_manager import SceneManager
 from ..managers.screen_manager import ScreenManager
 from ..managers.input_manager import InputManager
@@ -77,6 +79,7 @@ class Game:
                                                            base_resolution=self.screen_config.base_resolution,
                                                            target_resolution=self.screen_config.target_resolution,
                                                            vsync=self.screen_config.vsync)
+        self.events: EventManager = EventManager()
 
     def run(self, start_scene: Scene):
         """Starts the game loop.
@@ -100,6 +103,7 @@ class Game:
             self.time._update(dt)
             self.input._update()
             self.scenes._update()
+            self.events._flush_queue() # all queued events fire after scenes update
 
             # fixed update
             self._accumulator += self.time.delta

@@ -7,6 +7,7 @@ from .core import Game
 from .managers import TimeManager
 from .managers import InputManager
 from .managers import ScreenManager
+from .managers import EventManager
 
 from .utils import Timer
 from .utils import Stopwatch
@@ -14,6 +15,8 @@ from .utils import Stopwatch
 from .managers.screen_manager import ScaleFit
 from .managers.screen_manager import GameScaleMode
 from .managers.screen_manager import DisplayMode
+
+from .managers.event_manager import Event
 
 from .configs.screen_config import ScreenConfig
 from .configs.input_config import InputConfig
@@ -30,3 +33,4 @@ scenes: SceneManager = _ManagerProxy('scenes')
 time: TimeManager = _ManagerProxy('time')
 input: InputManager = _ManagerProxy('input')
 screen: ScreenManager = _ManagerProxy('screen')
+events: EventManager = _ManagerProxy('events')
