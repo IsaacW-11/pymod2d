@@ -8,10 +8,12 @@ from .scene_manager import SceneManager
 from ..managers.screen_manager import ScreenManager
 from ..managers.input_manager import InputManager
 from ..managers.time_manager import TimeManager
+from ..managers.asset_manager import AssetManager
 from ..utils.exceptions import ExistingGameInstance, MissingGameInstance
 from ..configs.screen_config import ScreenConfig
 from ..configs.input_config import InputConfig
 from ..configs.time_config import TimeConfig
+from ..configs.asset_config import AssetConfig
 
 if TYPE_CHECKING:
     from .scene import Scene
@@ -35,7 +37,8 @@ class Game:
     def __init__(self,
                  screen_config: ScreenConfig = None,
                  time_config: TimeConfig = None,
-                 input_config: InputConfig = None,):
+                 input_config: InputConfig = None,
+                 asset_config: AssetConfig = None):
         """Initializes game instance.
 
         Args:
@@ -53,6 +56,7 @@ class Game:
         self.screen_config: ScreenConfig = screen_config or ScreenConfig()
         self.time_config: TimeConfig = time_config or TimeConfig()
         self.input_config: InputConfig = input_config or InputConfig()
+        self.asset_config: AssetConfig = asset_config or AssetConfig()
 
         self.title: str = self.screen_config.title
         self.width: int = self.screen_config.window_size[0]
@@ -80,6 +84,7 @@ class Game:
                                                            target_resolution=self.screen_config.target_resolution,
                                                            vsync=self.screen_config.vsync)
         self.events: EventManager = EventManager()
+        self.assets = AssetManager(self.asset_config.root, self.asset_config.auto_scan, self.asset_config.preload)
 
     def run(self, start_scene: Scene):
         """Starts the game loop.

@@ -19,3 +19,7 @@ class MissingGameInstance(Exception):
 class MissingAction(Exception):
     """Raised when trying to access a non-existent action."""
     pass
+
+class AssetNotFound(Exception):
+    """Raised when trying to access a non-existent asset."""
+    pass

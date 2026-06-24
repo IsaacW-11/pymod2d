@@ -8,6 +8,7 @@ from .managers import TimeManager
 from .managers import InputManager
 from .managers import ScreenManager
 from .managers import EventManager
+from.managers import AssetManager
 
 from .utils import Timer
 from .utils import Stopwatch
@@ -21,6 +22,7 @@ from .managers.event_manager import Event
 from .configs.screen_config import ScreenConfig
 from .configs.input_config import InputConfig
 from .configs.time_config import TimeConfig
+from .configs.asset_config import AssetConfig
 
 class _ManagerProxy:
     def __init__(self, manager_name: str):
@@ -34,3 +36,4 @@ time: TimeManager = _ManagerProxy('time')
 input: InputManager = _ManagerProxy('input')
 screen: ScreenManager = _ManagerProxy('screen')
 events: EventManager = _ManagerProxy('events')
+assets: AssetManager = _ManagerProxy('assets')
