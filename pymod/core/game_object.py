@@ -19,9 +19,16 @@ class GameObject:
         scene: Stores the scene that the GameObject belongs to.
     """
 
-    def __init__(self):
+    def __init__(self, x: float = 0.0, y: float = 0.0, layer: str = "default"):
         self._components: dict[type[Component], Component] = {}
         self.scene: Scene | None = None
+
+        self.x: float = x
+        self.y: float = y
+        self.layer: str = layer
+        self.tags: set[str] = set()
+        self.active: bool = True  # whether update runs
+        self.visible: bool = True  # whether draw runs
 
     def __len__(self) -> int:
         return len(self._components)
@@ -104,15 +111,20 @@ class GameObject:
 
     def _update(self):
         """Internal method to update all components attached to this GameObject."""
+        if not self.active:
+            return
         for component in self._components.values():
             component._update()
 
     def _fixed_update(self):
         """Internal method to update all components attached to this GameObject. Used for physics based calculations."""
+        if not self.active:
+            return
         for component in self._components.values():
             component._fixed_update()
 
     def _draw(self):
         """Internal method to draw all components attached to this GameObject."""
-        for component in self._components.values():
-            component._draw()
+        if not self.visible:
+            for component in self._components.values():
+                component._draw()
