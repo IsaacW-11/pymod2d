@@ -126,5 +126,6 @@ class GameObject:
     def _draw(self):
         """Internal method to draw all components attached to this GameObject."""
         if not self.visible:
-            for component in self._components.values():
-                component._draw()
+            return
+        for component in self._components.values():
+            component._draw()

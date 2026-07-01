@@ -90,5 +90,8 @@ class Scene:
 
     def _draw(self):
         """Internal method to draw all GameObjects"""
+        from pymod.core.game import Game
+        camera = Game.get().camera.active
         for game_object in self._game_objects:
-            game_object._draw()
+            if camera is None or camera.is_layer_visible(game_object.layer):
+                game_object._draw()

@@ -8,10 +8,12 @@ from .managers import TimeManager
 from .managers import InputManager
 from .managers import ScreenManager
 from .managers import EventManager
-from.managers import AssetManager
+from .managers import AssetManager
+from .managers import CameraManager
 
 from .utils import Timer
 from .utils import Stopwatch
+from .utils import Viewport
 
 from .managers.screen_manager import ScaleFit
 from .managers.screen_manager import GameScaleMode
@@ -23,6 +25,8 @@ from .configs.screen_config import ScreenConfig
 from .configs.input_config import InputConfig
 from .configs.time_config import TimeConfig
 from .configs.asset_config import AssetConfig
+
+from . import prebuilt_components as Prebuilts
 
 class _ManagerProxy:
     def __init__(self, manager_name: str):
@@ -37,3 +41,4 @@ input: InputManager = _ManagerProxy('input')
 screen: ScreenManager = _ManagerProxy('screen')
 events: EventManager = _ManagerProxy('events')
 assets: AssetManager = _ManagerProxy('assets')
+camera: CameraManager = _ManagerProxy('camera')

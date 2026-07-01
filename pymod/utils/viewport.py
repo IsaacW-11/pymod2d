@@ -34,7 +34,7 @@ class Viewport:
         self.mode = mode
 
     @classmethod
-    def normalized(cls, x: float = 0.0, y: float = 0.0, width: float = 1.0, height: float = 1.0) -> "Viewport":
+    def normalized(cls, x: float = 0.0, y: float = 0.0, width: float = 1.0, height: float = 1.0) -> Viewport:
         """Create a viewport defined as fractions (0.0-1.0) of the screen.
 
         Args:
@@ -49,7 +49,7 @@ class Viewport:
         return cls(x, y, width, height, ViewportMode.NORMALIZED)
 
     @classmethod
-    def pixels(cls, x: float = 0, y: float = 0, width: float = 320, height: float = 180) -> "Viewport":
+    def pixels(cls, x: float = 0, y: float = 0, width: float = 320, height: float = 180) -> Viewport:
         """Create a viewport defined as a fixed pixel rect.
 
         Negative x or y anchors the viewport from the right or bottom edge of the screen instead of the left or top.

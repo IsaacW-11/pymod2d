@@ -9,6 +9,7 @@ from ..managers.screen_manager import ScreenManager
 from ..managers.input_manager import InputManager
 from ..managers.time_manager import TimeManager
 from ..managers.asset_manager import AssetManager
+from ..managers.camera_manager import CameraManager
 from ..utils.exceptions import ExistingGameInstance, MissingGameInstance
 from ..configs.screen_config import ScreenConfig
 from ..configs.input_config import InputConfig
@@ -84,7 +85,8 @@ class Game:
                                                            target_resolution=self.screen_config.target_resolution,
                                                            vsync=self.screen_config.vsync)
         self.events: EventManager = EventManager()
-        self.assets = AssetManager(self.asset_config.root, self.asset_config.auto_scan, self.asset_config.preload)
+        self.assets: AssetManager = AssetManager(self.asset_config.root, self.asset_config.auto_scan, self.asset_config.preload)
+        self.camera: CameraManager = CameraManager()
 
     def run(self, start_scene: Scene):
         """Starts the game loop.
@@ -108,6 +110,7 @@ class Game:
             self.time._update(dt)
             self.input._update()
             self.scenes._update()
+            self.camera._update()
             self.events._flush_queue() # all queued events fire after scenes update
 
             # fixed update
@@ -119,7 +122,7 @@ class Game:
                 self._accumulator -= fixed_dt
 
             self.screen.render_surface.fill((0, 0, 0)) # clears previous frames display
-            self.scenes._draw()
+            self.camera._render(self.scenes, self.screen.render_surface)
             self.screen._present()
 
             pygame.display.flip()

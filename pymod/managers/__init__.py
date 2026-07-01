@@ -3,3 +3,4 @@ from .input_manager import InputManager
 from .screen_manager import ScreenManager
 from .event_manager import EventManager
 from .asset_manager import AssetManager
+from .camera_manager import CameraManager
