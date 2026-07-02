@@ -146,6 +146,7 @@ class Camera(pymod.Component):
         """
         self._shake_intensity = intensity
         self._shake_duration = duration
+        self._shake_max_duration = duration  # store original for decay ratio
 
     # BOUNDS
     def set_bounds(self, bounds: pygame.Rect):
@@ -387,9 +388,13 @@ class Camera(pymod.Component):
             self._shake_offset = (0.0, 0.0)
             return
 
+        # decay from full intensity to zero as duration runs out
+        decay = self._shake_duration / self._shake_max_duration
+        current_intensity = self._shake_intensity * decay
+
         self._shake_offset = (
-            random.uniform(-self._shake_intensity, self._shake_intensity),
-            random.uniform(-self._shake_intensity, self._shake_intensity),
+            random.uniform(-current_intensity, current_intensity),
+            random.uniform(-current_intensity, current_intensity),
         )
 
     def _clamp_to_bounds(self) -> None:
