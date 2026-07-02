@@ -76,6 +76,7 @@ class Camera(pymod.Component):
         self._shake_intensity: float = 0.0
         self._shake_duration: float = 0.0
         self._shake_offset: tuple[float, float] = (0.0, 0.0)
+        self._shake_max_duration: float = 0.0
 
         self._zoom_target: float | None = None
         self._zoom_speed: float = 0.0
@@ -326,13 +327,13 @@ class Camera(pymod.Component):
     # LIFECYCLE
     # ════════════════════════════════════════════════════════════════════
 
-    def on_attach(self) -> None:
+    def on_start(self):
         pymod.Game.get().camera.register(self)
 
-    def on_destroy(self) -> None:
+    def on_destroy(self):
         pymod.Game.get().camera.unregister(self)
 
-    def _update(self) -> None:
+    def _update(self):
         """Internal method called every frame by CameraManager."""
         dt = pymod.time.delta
 
@@ -350,7 +351,7 @@ class Camera(pymod.Component):
         if self.bounds is not None:
             self._clamp_to_bounds()
 
-    def _update_follow(self, dt: float) -> None:
+    def _update_follow(self, dt: float):
         target_x = self.target.x + self.follow_offset[0]
         target_y = self.target.y + self.follow_offset[1]
 
@@ -374,14 +375,14 @@ class Camera(pymod.Component):
             self.owner.x += (desired_x - self.owner.x) * t
             self.owner.y += (desired_y - self.owner.y) * t
 
-    def _update_zoom_transition(self, dt: float) -> None:
+    def _update_zoom_transition(self, dt: float):
         t = min(1.0, self._zoom_speed * dt)
         self.zoom += (self._zoom_target - self.zoom) * t
         if abs(self.zoom - self._zoom_target) < 0.001:
             self.zoom = self._zoom_target
             self._zoom_target = None
 
-    def _update_shake(self, dt: float) -> None:
+    def _update_shake(self, dt: float):
         self._shake_duration -= dt
         if self._shake_duration <= 0:
             self._shake_duration = 0
@@ -397,7 +398,7 @@ class Camera(pymod.Component):
             random.uniform(-current_intensity, current_intensity),
         )
 
-    def _clamp_to_bounds(self) -> None:
+    def _clamp_to_bounds(self):
         visible = self.get_visible_world_rect()
         half_w = visible.width / 2
         half_h = visible.height / 2

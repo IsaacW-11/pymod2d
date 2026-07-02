@@ -125,13 +125,13 @@ class CameraManager:
         return camera.screen_to_world(screen_pos)
 
     # INTERNAL
-    def _update(self) -> None:
+    def _update(self):
         """Internal method called every frame by Game to update camera logic."""
         for camera in self._cameras:
             if camera.enabled:
                 camera._update()
 
-    def _render(self, scene_manager: SceneManager, render_surface: pygame.Surface) -> None:
+    def _render(self, scene_manager: SceneManager, render_surface: pygame.Surface):
         """Internal method called every frame by Game to render through all cameras.
 
         If no cameras are registered, draws once with no transform applied.
