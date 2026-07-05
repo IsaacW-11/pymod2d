@@ -28,6 +28,8 @@ from .configs.asset_config import AssetConfig
 
 from . import prebuilt_components as Prebuilts
 
+from .components import Anchor
+
 class _ManagerProxy:
     def __init__(self, manager_name: str):
         self._name = manager_name

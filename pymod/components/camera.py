@@ -1,4 +1,3 @@
-# pymod/components/camera.py
 from __future__ import annotations
 import math
 import random
@@ -323,10 +322,7 @@ class Camera(pymod.Component):
         """
         return self.viewport.to_rect(surface_size)
 
-    # ════════════════════════════════════════════════════════════════════
     # LIFECYCLE
-    # ════════════════════════════════════════════════════════════════════
-
     def on_start(self):
         pymod.Game.get().camera.register(self)
 
