@@ -14,6 +14,7 @@ from .managers import CameraManager
 from .utils import Timer
 from .utils import Stopwatch
 from .utils import Viewport
+from .utils import SpatialGrid
 
 from .managers.screen_manager import ScaleFit
 from .managers.screen_manager import GameScaleMode
@@ -29,6 +30,8 @@ from .configs.asset_config import AssetConfig
 from . import prebuilt_components as Prebuilts
 
 from .components import Anchor
+
+from .events import CollisionEvent
 
 class _ManagerProxy:
     def __init__(self, manager_name: str):
