@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 import pygame
 
 from ..managers.event_manager import EventManager
+from ..managers.physics_manager import PhysicsManager
 from ..managers.collision_manager import CollisionManager
 from .scene_manager import SceneManager
 from ..managers.screen_manager import ScreenManager
@@ -89,6 +90,7 @@ class Game:
         self.assets: AssetManager = AssetManager(self.asset_config.root, self.asset_config.auto_scan, self.asset_config.preload)
         self.camera: CameraManager = CameraManager()
         self.collision: CollisionManager = CollisionManager()
+        self.physics: PhysicsManager = PhysicsManager()
 
     def run(self, start_scene: Scene):
         """Starts the game loop.
@@ -112,7 +114,6 @@ class Game:
             self.time._update(dt)
             self.input._update()
             self.scenes._update()
-            self.collision._update()
             self.camera._update()
             self.events._flush_queue() # all queued events fire after scenes update
 
@@ -122,6 +123,7 @@ class Game:
 
             while self._accumulator >= fixed_dt:
                 self.scenes._fixed_update()
+                self.collision._update()
                 self._accumulator -= fixed_dt
 
             self.screen.render_surface.fill((0, 0, 0)) # clears previous frames display

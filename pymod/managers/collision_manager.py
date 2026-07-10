@@ -263,31 +263,44 @@ class CollisionManager:
         return dx * dx + dy * dy <= collider.radius * collider.radius
 
     # RESOLUTION
-    def _resolve(self, a: Collider, b: Collider, normal: tuple[float, float], overlap: float):
-        """Push overlapping solid colliders apart along the collision normal.
+    def _resolve(self, a, b, normal, overlap) -> None:
+        from ..components.rigidbody import Rigidbody
 
-        normal points from b toward a. Static colliders never move; if both are static nothing happens; if one is static the other takes the full
-        correction; if neither is static the correction splits evenly.
-        """
+        SLOP = 0.5  # pixels of penetration left uncorrected to avoid jitter
+
         nx, ny = normal
-        a_static = a.static
-        b_static = b.static
 
-        if a_static and b_static:
-            return
+        rb_a = a.owner.get_component(Rigidbody)
+        rb_b = b.owner.get_component(Rigidbody)
 
-        if a_static:
-            b.owner.x -= nx * overlap
-            b.owner.y -= ny * overlap
-        elif b_static:
-            a.owner.x += nx * overlap
-            a.owner.y += ny * overlap
-        else:
-            half = overlap / 2
-            a.owner.x += nx * half
-            a.owner.y += ny * half
-            b.owner.x -= nx * half
-            b.owner.y -= ny * half
+        a_movable = rb_a is not None and not rb_a.kinematic and not a.static
+        b_movable = rb_b is not None and not rb_b.kinematic and not b.static
+
+        # positional correction — only the amount beyond the slop tolerance
+        corrected = max(0.0, overlap - SLOP)
+
+        if corrected > 0:
+            if not a_movable and not b_movable:
+                pass  # neither can move
+            elif not a_movable:
+                b.owner.x -= nx * corrected
+                b.owner.y -= ny * corrected
+            elif not b_movable:
+                a.owner.x += nx * corrected
+                a.owner.y += ny * corrected
+            else:
+                half = corrected / 2
+                a.owner.x += nx * half
+                a.owner.y += ny * half
+                b.owner.x -= nx * half
+                b.owner.y -= ny * half
+
+        # velocity response — always applied, even within slop, so objects
+        # don't keep accelerating into the surface
+        if rb_a is not None:
+            rb_a._apply_collision_response((nx, ny), rb_b)
+        if rb_b is not None:
+            rb_b._apply_collision_response((-nx, -ny), rb_a)
 
     # NOTIFICATION
     def _fire_enter(self, a, b, normal, overlap, is_trigger):
