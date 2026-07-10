@@ -145,7 +145,7 @@ class AssetManager:
         path = self._resolve_path(name_or_path, self._image_paths, "image")
 
         if path in self._image_cache:
-            return self.image_cache[path]
+            return self._image_cache[path]
 
         surface = pygame.image.load(path)
 

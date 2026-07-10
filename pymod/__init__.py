@@ -10,6 +10,7 @@ from .managers import ScreenManager
 from .managers import EventManager
 from .managers import AssetManager
 from .managers import CameraManager
+from .managers import CollisionManager
 
 from .utils import Timer
 from .utils import Stopwatch
@@ -47,3 +48,4 @@ screen: ScreenManager = _ManagerProxy('screen')
 events: EventManager = _ManagerProxy('events')
 assets: AssetManager = _ManagerProxy('assets')
 camera: CameraManager = _ManagerProxy('camera')
+collision: CollisionManager = _ManagerProxy('collision')
