@@ -264,7 +264,7 @@ class CollisionManager:
     def _resolve(self, a, b, normal, overlap) -> None:
         from ..components.rigidbody import Rigidbody
 
-        SLOP = 0.5  # pixels of penetration left uncorrected to avoid jitter
+        SLOP = 1  # pixels of penetration left uncorrected to avoid jitter
 
         nx, ny = normal
 
