@@ -167,36 +167,36 @@ class CollisionManager:
 
     # SHAPE TESTS  →  return (normal, overlap) or None
     def _test(self, a: Collider, b: Collider):
-        """Dispatch to the correct shape-pair test. Returns (normal, overlap) or None.
+        """Dispatch to the correct shape-pair test.
 
-        normal points from b toward a (the direction a must move to separate).
+        Returns (normal, overlap) or None if not overlapping.
         """
         from ..components.colliders.box_collider import BoxCollider
-        from ..components.colliders.circle_collider import CircleCollider
 
         a_box = isinstance(a, BoxCollider)
         b_box = isinstance(b, BoxCollider)
 
         if a_box and b_box:
             return self._box_box(a, b)
+
         if not a_box and not b_box:
             return self._circle_circle(a, b)
+
         if a_box and not b_box:
             res = self._box_circle(a, b)
-            return res
-        # a circle, b box — flip and negate normal
-        res = self._box_circle(b, a)
-        if res is None:
-            return None
-        (nx, ny), overlap = res
-        return ((-nx, -ny), overlap)
+            if res is None:
+                return None
+            (nx, ny), overlap = res
+            return ((-nx, -ny), overlap)
+
+
+        return self._box_circle(b, a)
 
     def _box_box(self, a: BoxCollider, b: BoxCollider):
         ra, rb = a.get_bounds(), b.get_bounds()
         if not ra.colliderect(rb):
             return None
 
-        # minimum translation vector — smallest axis overlap
         overlap_x = min(ra.right, rb.right) - max(ra.left, rb.left)
         overlap_y = min(ra.bottom, rb.bottom) - max(ra.top, rb.top)
 
@@ -218,7 +218,7 @@ class CollisionManager:
 
         dist = math.sqrt(dist_sq) if dist_sq > 0 else 0.0
         if dist == 0:
-            return ((1.0, 0.0), r)  # exactly concentric — pick an arbitrary axis
+            return ((1.0, 0.0), r)
         overlap = r - dist
         return ((dx / dist, dy / dist), overlap)
 
@@ -236,7 +236,6 @@ class CollisionManager:
 
         dist = math.sqrt(dist_sq) if dist_sq > 0 else 0.0
         if dist == 0:
-            # circle centre inside the box — push out nearest edge
             left = cx - rect.left
             right = rect.right - cx
             top = cy - rect.top
@@ -251,7 +250,6 @@ class CollisionManager:
             return ((0.0, 1.0), circle.radius + bottom)
 
         overlap = circle.radius - dist
-        # normal points from box toward circle
         return ((dx / dist, dy / dist), overlap)
 
     def _point_in_collider(self, x: float, y: float, collider: Collider) -> bool:
