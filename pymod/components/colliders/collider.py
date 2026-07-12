@@ -136,3 +136,23 @@ class Collider(pymod.Component):
     def draw(self) -> None:
         if self.debug_draw:
             self._debug_draw()
+
+    # INTERNAL
+    def _find_renderer(self):
+        """Find any component on the owner that can report a world rect.
+
+        Checks for a SpriteRenderer first, then any ShapeRenderer subclass.
+        Returns None if the owner has no renderer.
+        """
+        from ..sprite_renderer import SpriteRenderer
+        from ..shape_renderers.shape_renderer import ShapeRenderer
+
+        renderer = self.owner.get_component(SpriteRenderer)
+        if renderer is not None:
+            return renderer
+
+        for component in self.owner._components.values():
+            if isinstance(component, ShapeRenderer):
+                return component
+
+        return None

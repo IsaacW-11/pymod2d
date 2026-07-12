@@ -21,24 +21,29 @@ class BoxCollider(Collider):
         self.height = height
 
     def on_start(self) -> None:
-        if self.width is None or self.height is None:
-            self._auto_size_from_sprite()
-        super().on_start()
+        renderer = self._find_renderer()
 
-    def _auto_size_from_sprite(self) -> None:
-        from ..sprite_renderer import SpriteRenderer
-        renderer = self.owner.get_component(SpriteRenderer)
         if renderer is not None:
             rect = renderer.get_world_rect()
+
             if self.width is None:
                 self.width = rect.width
             if self.height is None:
                 self.height = rect.height
+
+            # auto-align the collider to overlay exactly where the renderer
+            # draws, accounting for its anchor. Only if the user didn't
+            # explicitly set an offset.
+            if self.offset == (0.0, 0.0):
+                self.offset = (rect.x - self.owner.x, rect.y - self.owner.y)
         else:
             if self.width is None:
                 self.width = 32
             if self.height is None:
                 self.height = 32
+
+        super().on_start()
+
 
     def get_bounds(self) -> pygame.Rect:
         x = self.owner.x + self.offset[0]

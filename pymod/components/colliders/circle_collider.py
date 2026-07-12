@@ -18,18 +18,27 @@ class CircleCollider(Collider):
         self.radius = radius
 
     def on_start(self) -> None:
-        if self.radius is None:
-            self._auto_size_from_sprite()
-        super().on_start()
+        renderer = self._find_renderer()
 
-    def _auto_size_from_sprite(self) -> None:
-        from ..sprite_renderer import SpriteRenderer
-        renderer = self.owner.get_component(SpriteRenderer)
         if renderer is not None:
             rect = renderer.get_world_rect()
-            self.radius = max(rect.width, rect.height) / 2
+
+            if self.radius is None:
+                self.radius = max(rect.width, rect.height) / 2
+
+            # align the circle's center to the renderer's center
+            if self.offset == (0.0, 0.0):
+                self.offset = (
+                    rect.centerx - self.owner.x,
+                    rect.centery - self.owner.y,
+                )
         else:
-            self.radius = 16
+            if self.radius is None:
+                self.radius = 16
+
+        super().on_start()
+
+
 
     @property
     def center(self) -> tuple[float, float]:
