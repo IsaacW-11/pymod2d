@@ -3,3 +3,7 @@ from .components.sprite_renderer import SpriteRenderer
 from .components import BoxCollider
 from .components import CircleCollider
 from .components import Rigidbody
+from .components import RectRenderer
+from .components import CircleRenderer
+from .components import RegularPolygonRenderer
+from .components import PolygonRenderer
