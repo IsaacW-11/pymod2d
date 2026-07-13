@@ -6,3 +6,4 @@ from .asset_manager import AssetManager
 from .camera_manager import CameraManager
 from .collision_manager import CollisionManager
 from .physics_manager import PhysicsManager
+from .audio_manager import AudioManager

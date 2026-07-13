@@ -12,6 +12,7 @@ from .managers import AssetManager
 from .managers import CameraManager
 from .managers import CollisionManager
 from .managers import PhysicsManager
+from .managers import AudioManager
 
 from .utils import Timer
 from .utils import Stopwatch
@@ -51,3 +52,4 @@ assets: AssetManager = _ManagerProxy('assets')
 camera: CameraManager = _ManagerProxy('camera')
 collision: CollisionManager = _ManagerProxy('collision')
 physics: PhysicsManager = _ManagerProxy('physics')
+audio: AudioManager = _ManagerProxy('audio')

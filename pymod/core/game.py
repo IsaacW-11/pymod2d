@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING
 
 import pygame
 
+from ..managers.audio_manager import AudioManager
 from ..managers.event_manager import EventManager
 from ..managers.physics_manager import PhysicsManager
 from ..managers.collision_manager import CollisionManager
@@ -91,6 +92,7 @@ class Game:
         self.camera: CameraManager = CameraManager()
         self.collision: CollisionManager = CollisionManager()
         self.physics: PhysicsManager = PhysicsManager()
+        self.audio: AudioManager = AudioManager()
 
     def run(self, start_scene: Scene):
         """Starts the game loop.
@@ -113,6 +115,7 @@ class Game:
 
             self.time._update(dt)
             self.input._update()
+            self.audio._update()
             self.scenes._update()
             self.camera._update()
             self.events._flush_queue() # all queued events fire after scenes update
@@ -141,6 +144,7 @@ class Game:
     def _shutdown(self):
         """Internal cleanup method automatically called when the loop ends."""
         self.scenes.clear()
+        self.audio._shutdown()
 
         pygame.quit()
         Game._instance = None
