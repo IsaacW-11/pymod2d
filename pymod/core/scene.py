@@ -79,9 +79,12 @@ class Scene:
         return self
 
     def _update(self):
-        """Internal method to update all GameObjects"""
         for game_object in self._game_objects:
             game_object._update()
+        # propagate parent transforms down to children
+        for game_object in self._game_objects:
+            if game_object.parent is None:
+                game_object._sync_children()
 
     def _fixed_update(self):
         """Internal method to update all GameObjects. Used for physics based calculations."""

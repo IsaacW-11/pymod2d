@@ -30,6 +30,11 @@ class GameObject:
         self.active: bool = True  # whether update runs
         self.visible: bool = True  # whether draw runs
 
+        self.parent: GameObject | None = None
+        self.children: list[GameObject] = []
+        self.local_x: float = 0.0  # position relative to parent
+        self.local_y: float = 0.0
+
     def __len__(self) -> int:
         return len(self._components)
 
@@ -108,6 +113,56 @@ class GameObject:
             True if the component exists in the GameObject, False otherwise.
         """
         return component_type in self._components
+
+    def add_child(self, child: GameObject) -> GameObject:
+        """Parent another GameObject to this one.
+
+        The child's world position becomes relative to this object. Moving the parent moves all children with it.
+        The child's current world position is preserved at the moment of parenting.
+
+        Args:
+            child: The GameObject to parent to this one.
+
+        Returns:
+            This GameObject, for chaining.
+        """
+        if child.parent is not None:
+            child.parent.remove_child(child)
+
+        child.parent = self
+        child.local_x = child.x - self.x
+        child.local_y = child.y - self.y
+        self.children.append(child)
+        return self
+
+    def remove_child(self, child: GameObject) -> GameObject:
+        """Unparent a child, preserving its current world position."""
+        if child in self.children:
+            self.children.remove(child)
+            child.parent = None
+            child.local_x = 0.0
+            child.local_y = 0.0
+        return self
+
+    def set_parent(self, parent: GameObject | None) -> GameObject:
+        """Set this object's parent, or None to unparent."""
+        if parent is None:
+            if self.parent is not None:
+                self.parent.remove_child(self)
+        else:
+            parent.add_child(self)
+        return self
+
+    def _sync_children(self) -> None:
+        """Internal method to push this object's world position down to children.
+
+        Called each frame after updates so children follow their parent.
+        Recurses so nested hierarchies work.
+        """
+        for child in self.children:
+            child.x = self.x + child.local_x
+            child.y = self.y + child.local_y
+            child._sync_children()
 
     def _update(self):
         """Internal method to update all components attached to this GameObject."""
