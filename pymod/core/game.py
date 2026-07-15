@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 
 import pygame
 
-from pymod import UIManager
+from ..managers.ui_manager import UIManager
 from ..managers.audio_manager import AudioManager
 from ..managers.event_manager import EventManager
 from ..managers.physics_manager import PhysicsManager
