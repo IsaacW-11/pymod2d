@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING
 
 import pygame
 
+from pymod import UIManager
 from ..managers.audio_manager import AudioManager
 from ..managers.event_manager import EventManager
 from ..managers.physics_manager import PhysicsManager
@@ -93,6 +94,7 @@ class Game:
         self.collision: CollisionManager = CollisionManager()
         self.physics: PhysicsManager = PhysicsManager()
         self.audio: AudioManager = AudioManager()
+        self.ui: UIManager = UIManager()
 
     def run(self, start_scene: Scene):
         """Starts the game loop.
@@ -131,6 +133,12 @@ class Game:
 
             self.screen.render_surface.fill((0, 0, 0)) # clears previous frames display
             self.camera._render(self.scenes, self.screen.render_surface)
+
+            current = self.scenes.current
+            if current is not None:
+                self.ui._update(current)
+                self.ui._draw(current)
+
             self.screen._present()
 
             pygame.display.flip()
