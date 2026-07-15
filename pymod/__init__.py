@@ -37,6 +37,8 @@ from .components import Anchor
 
 from .events import CollisionEvent
 
+from .components import UIAnchor
+
 class _ManagerProxy:
     def __init__(self, manager_name: str):
         self._name = manager_name
