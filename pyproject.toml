@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pymod2d"
+version = "0.1.0"
+description = "A component-based 2D game framework built on pygame, inspired by Unity's architecture."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+    { name = "Isaac" },
+]
+keywords = ["game", "gamedev", "2d", "pygame", "engine", "framework"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Topic :: Games/Entertainment",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+
+dependencies = [
+    "pygame-ce>=2.4",
+]
+
+[project.urls]
+Homepage = "https://github.com/isaacW-11/pymod2d"
+Repository = "https://github.com/isaacW-11/pymod2d"
+
+[tool.setuptools.packages.find]
+include = ["pymod*"]
+exclude = ["examples*", "tests*", "tools*", "assets*"]

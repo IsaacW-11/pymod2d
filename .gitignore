@@ -1,0 +1,95 @@
+# ==============================================================================
+# Python Core Artifacts
+# ==============================================================================
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# ==============================================================================
+# Distribution / Packaging
+# ==============================================================================
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# ==============================================================================
+# Virtual Environments (Crucial to ignore!)
+# ==============================================================================
+.venv/
+venv/
+ENV/
+env/
+isolated-env/
+.pipenv/
+.poetry/
+
+# ==============================================================================
+# Testing, Coverage, and Linters
+# ==============================================================================
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# ==============================================================================
+# Jupyter Notebooks
+# ==============================================================================
+.ipynb_checkpoints
+
+# ==============================================================================
+# Environment Variables and Secrets (Never commit keys!)
+# ==============================================================================
+.env
+.env.local
+.env.*.local
+.secret
+*.pem
+*.key
+credentials.json
+secrets.yaml
+
+# ==============================================================================
+# Logs and Misc Junk
+# ==============================================================================
+*.log
+*.bak
+*.swp
+
+# ==============================================================================
+# IDEs and Code Editors (Optional but highly recommended)
+# ==============================================================================
+# Visual Studio Code
+.vscode/
+
+# PyCharm / JetBrains
+.idea/
+
+# Operating System specific files
+.DS_Store
+Thumbs.db
