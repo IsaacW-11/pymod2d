@@ -20,7 +20,7 @@ class UIManager:
     routes mouse input to the topmost element under the cursor, and draws everything.
 
     Layouts are loaded from JSON and can hot-reload.
-    It lets you edit the file while the game runs and the UI rebuilds instantly, so you can iterate on layout without restarting.
+    It lets you edit the file while the game runs fand the UI rebuilds instantly, so you can iterate on layout without restarting.
 
     Attributes:
         debug_draw: When True, overlays every element's rect, name, and anchor point for visual debugging.
@@ -168,6 +168,8 @@ class UIManager:
                 self._pressed = found
                 found._on_press()
             elif pymod.input.mouse_released("left") and self._pressed is found:
+                print(
+                    f"CLICK fired on {type(found).__name__}, callback: {found.on_click_callback if hasattr(found, 'on_click_callback') else 'n/a'}")
                 found._on_release()
                 found._on_click()
                 self._pressed = None
@@ -175,6 +177,8 @@ class UIManager:
             if self._pressed is not None:
                 self._pressed._on_release()
             self._pressed = None
+
+
 
     def _draw(self, scene) -> None:
         """Internal method called by Game after the world render pass. Draws all UI in screen space, ignoring the camera."""

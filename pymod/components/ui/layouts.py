@@ -28,6 +28,7 @@ class LayoutGroup(pymod.Component):
         for child in self.owner.children:
             rc = child.get_component(UIRect)
             if rc is not None:
+                rc.layout_controlled = True
                 rects.append((child, rc))
         return rects
 

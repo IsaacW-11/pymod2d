@@ -82,6 +82,12 @@ def _build_element(element, parent, scene, actions, styles):
     for child in element.get("children", []):
         _build_element(child, parent=obj, scene=scene, actions=actions, styles=styles)
 
+    if layout:
+        for child in obj.children:
+            child_rect = child.get_component(UIRect)
+            if child_rect is not None:
+                child_rect.layout_controlled = True
+
     return obj
 
 

@@ -55,6 +55,7 @@ class UIRect(pymod.Component):
         self.margin = margin
         self.pivot = pivot
         self._rect = pygame.Rect(0, 0, 0, 0)
+        self.layout_controlled: bool = False
 
     @property
     def rect(self) -> pygame.Rect:
@@ -76,6 +77,9 @@ class UIRect(pymod.Component):
 
         Called each frame by UIManager, top-down through the hierarchy so parents are computed before their children.
         """
+        if self.layout_controlled:
+            return
+
         p = self.get_parent_rect()
         ml, mt, mr, mb = self.margin
         ox, oy = self.offset

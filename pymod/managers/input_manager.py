@@ -325,7 +325,7 @@ class InputManager:
             True if the button was released this frame, otherwise False.
         """
         button_id = self._resolve_mouse_button(button)
-        return button_id not in self._mouse_buttons_current and button_id in self._mouse_buttons_current
+        return button_id not in self._mouse_buttons_current and button_id in self._mouse_buttons_previous
 
     @property
     def mouse_position(self) -> tuple[int, int]:
