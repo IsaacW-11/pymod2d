@@ -78,6 +78,36 @@ class Scene:
             warnings.warn(f"GameObject {type(game_object).__name__} not found in Scene", UserWarning, stacklevel=2)
         return self
 
+    def find_first_with_component(self, component_type: type):
+        """Find the first object in the scene with a given component type.
+
+        Returns:
+            The matching GameObject, or None.
+        """
+        for obj in self._game_objects:
+            if obj.has_component(component_type):
+                return obj
+        return None
+
+    def find_objects_with_component(self, component_type: type) -> list:
+        """All objects in the scene with a given component type."""
+        return [obj for obj in self._game_objects if obj.has_component(component_type)]
+
+    def find_objects_with_tag(self, tag: str) -> list:
+        """All objects carrying a given tag."""
+        return [obj for obj in self._game_objects if tag in obj.tags]
+
+    def find_first_with_tag(self, tag: str):
+        """The first object carrying a given tag, or None."""
+        for obj in self._game_objects:
+            if tag in obj.tags:
+                return obj
+        return None
+
+    def get_all_objects(self) -> list:
+        """Every object currently in the scene (a copy of the list)."""
+        return self._game_objects.copy()
+
     def _update(self):
         for game_object in self._game_objects:
             game_object._update()
