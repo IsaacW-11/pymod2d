@@ -186,7 +186,6 @@ class Rigidbody(pymod.Component):
 
     def fixed_update(self) -> None:
         """Integrate motion on the fixed timestep."""
-        print(f"fixed_update running, velocity: {self.velocity}, y: {self.owner.y}")
         if self.kinematic:
             # kinematic bodies still move by their velocity if set,
             # but ignore gravity, drag, and forces
