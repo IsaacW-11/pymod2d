@@ -1,6 +1,7 @@
 from __future__ import annotations
 from enum import Enum, auto
 
+import math
 import pygame
 
 import pymod
@@ -47,6 +48,7 @@ class UIRect(pymod.Component):
         offset: tuple[float, float] = (0, 0),
         margin: tuple[float, float, float, float] = (0, 0, 0, 0),
         pivot: tuple[float, float] = (0.5, 0.5),
+        rotation: float = 0.0
     ):
         super().__init__()
         self.anchor = anchor
@@ -54,6 +56,7 @@ class UIRect(pymod.Component):
         self.offset = offset
         self.margin = margin
         self.pivot = pivot
+        self.rotation = rotation  # degrees, clockwise
         self._rect = pygame.Rect(0, 0, 0, 0)
         self.layout_controlled: bool = False
 
@@ -86,30 +89,15 @@ class UIRect(pymod.Component):
         w, h = self.size
 
         if self.anchor == UIAnchor.STRETCH:
-            self._rect = pygame.Rect(
-                p.left + ml, p.top + mt,
-                p.width - ml - mr, p.height - mt - mb,
-            )
+            self._rect=pygame.Rect(p.left+ml,p.top+mt,p.width-ml-mr,p.height-mt-mb)
             return
 
         if self.anchor == UIAnchor.STRETCH_HORIZONTAL:
-            width = p.width - ml - mr
-            anchor_y = p.centery
-            self._rect = pygame.Rect(
-                p.left + ml,
-                anchor_y - h * self.pivot[1] + oy,
-                width, h,
-            )
+            self._rect=pygame.Rect(p.left+ml,p.centery-h*self.pivot[1]+oy,p.width-ml-mr,h)
             return
 
         if self.anchor == UIAnchor.STRETCH_VERTICAL:
-            height = p.height - mt - mb
-            anchor_x = p.centerx
-            self._rect = pygame.Rect(
-                anchor_x - w * self.pivot[0] + ox,
-                p.top + mt,
-                w, height,
-            )
+            self._rect=pygame.Rect(p.centerx-w*self.pivot[0]+ox,p.top+mt,w,p.height-mt-mb)
             return
 
         anchor_points = {
@@ -125,12 +113,15 @@ class UIRect(pymod.Component):
         }
         ax, ay = anchor_points[self.anchor]
 
-        self._rect = pygame.Rect(
-            ax + ox - w * self.pivot[0],
-            ay + oy - h * self.pivot[1],
-            w, h,
-        )
+        self._rect=pygame.Rect(ax+ox-w*self.pivot[0],ay+oy-h*self.pivot[1],w,h)
 
     def contains_point(self, x: float, y: float) -> bool:
         """Whether a screen-space point is inside this element."""
-        return self._rect.collidepoint(x, y)
+        if self.rotation % 360 == 0:
+            return self._rect.collidepoint(x, y)
+        cx, cy = self._rect.centerx, self._rect.centery
+        rad = math.radians(-self.rotation)  # inverse rotation
+        dx, dy = x - cx, y - cy
+        lx = dx * math.cos(rad) - dy * math.sin(rad) + cx
+        ly = dx * math.sin(rad) + dy * math.cos(rad) + cy
+        return self._rect.collidepoint(lx, ly)
