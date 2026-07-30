@@ -343,3 +343,296 @@ class UIToggle(UIInteractive):
         pygame.draw.rect(surface,col,rect,border_radius=4)
         if self.value:
             pygame.draw.rect(surface,self.check_color,rect.inflate(-rect.width//3,-rect.height//3),border_radius=3)
+
+class UIProgressBar(pymod.Component):
+    """A progress meter. Set value from 0-1. Fill can be a solid colour or gradient (via a StyleSet on the fill)."""
+    def __init__(self, value=0.5, track_color=(40,44,56), fill_color=(90,180,140), corner_radius=6, fill_style=None):
+        super().__init__()
+        self.value=value; self.track_color=track_color; self.fill_color=fill_color
+        self.corner_radius=corner_radius; self.fill_style=fill_style
+
+    def draw_ui(self, surface):
+        rc=self.owner.get_component(UIRect)
+        if not rc:
+            return
+        rect=rc.rect; r=self.corner_radius
+        pygame.draw.rect(surface,self.track_color,rect,border_radius=r)
+        fw=int(rect.width*max(0.0,min(1.0,self.value)))
+        if fw<=0:
+            return
+        frect=pygame.Rect(rect.left,rect.top,fw,rect.height)
+        if self.fill_style:
+            st=self.fill_style.resolve("normal", pymod.time.unscaled_delta)
+            body=st.render_body_surface(frect.size, r); surface.blit(body,frect.topleft)
+        else:
+            pygame.draw.rect(surface,self.fill_color,frect,border_radius=r)
+
+class UIDivider(pymod.Component):
+    """A separator line, horizontal or vertical, centred in its rect."""
+    def __init__(self, color=(70,78,94), thickness=2, orientation="horizontal"):
+        super().__init__()
+        self.color=color
+        self.thickness=thickness
+        self.orientation=orientation
+
+    def draw_ui(self, surface):
+        rc=self.owner.get_component(UIRect)
+        if not rc:
+            return
+        rect=rc.rect
+        if self.orientation=="horizontal":
+            y=rect.centery
+            pygame.draw.line(surface,self.color[:3],(rect.left,y),(rect.right,y),self.thickness)
+        else:
+            x=rect.centerx
+            pygame.draw.line(surface,self.color[:3],(x,rect.top),(x,rect.bottom),self.thickness)
+
+class UIIcon(pymod.Component):
+    """A shape icon (circle/square/triangle/diamond) or an image icon."""
+    def __init__(self, shape="circle", color=(220,225,235), image_path=None):
+        super().__init__()
+        self.shape=shape; self.color=color; self.image_path=image_path; self._image=None
+
+    def on_start(self):
+        if self.image_path: self._image=pymod.assets.load_image(self.image_path)
+
+    def draw_ui(self, surface):
+        rc=self.owner.get_component(UIRect)
+        if not rc:
+            return
+        rect=rc.rect
+        if self._image is not None:
+            surface.blit(pygame.transform.smoothscale(self._image, rect.size), rect.topleft); return
+        c=self.color[:3]; cx,cy=rect.center; r=min(rect.width,rect.height)//2
+        if self.shape=="circle":
+            pygame.draw.circle(surface,c,(cx,cy),r)
+        elif self.shape=="square":
+            pygame.draw.rect(surface,c,rect.inflate(-4,-4),border_radius=4)
+        elif self.shape=="triangle":
+            pygame.draw.polygon(surface,c,[(cx,cy-r),(cx-r,cy+r),(cx+r,cy+r)])
+        elif self.shape=="diamond":
+            pygame.draw.polygon(surface,c,[(cx,cy-r),(cx+r,cy),(cx,cy+r),(cx-r,cy)])
+
+class UITextInput(UIInteractive):
+    """Typed text entry. Focus on click; types via pymod.input text events."""
+    def __init__(self, style_set, text="", placeholder="", font_size=20, font_path=None,
+                 max_length=64, on_change_callback=None):
+        super().__init__()
+        self.style_set=style_set
+        self.text=text
+        self.placeholder=placeholder
+        self.font_size=font_size
+        self.font_path=font_path
+        self.max_length=max_length
+        self.on_change_callback=on_change_callback
+        self.focused=False
+        self._font=None
+        self._caret_t=0.0
+
+    def on_start(self):
+        self._font=pymod.assets.load_font(self.font_path, self.font_size)
+
+    def on_click(self):
+        self.focused=True
+
+    def _defocus(self):
+        self.focused=False
+
+    def type_char(self, ch):
+        if len(self.text)<self.max_length:
+            self.text+=ch
+            if self.on_change_callback: self.on_change_callback(self.text)
+
+    def backspace(self):
+        self.text=self.text[:-1]
+        if self.on_change_callback: self.on_change_callback(self.text)
+
+    def update(self):
+        self._caret_t+=pymod.time.unscaled_delta
+        # defocus if clicking elsewhere
+        if self.focused and pymod.input.mouse_pressed("left") and not self.hovered:
+            self._defocus()
+
+    def draw_ui(self, surface):
+        rc=self.owner.get_component(UIRect)
+        if not rc or not self._font: return
+        state="hover" if self.focused else self._state()
+        style=self.style_set.resolve(state, pymod.time.unscaled_delta)
+        rect=style.paint(surface, rc.rect)
+        show=self.text if self.text else self.placeholder
+        col=style.text_color[:3] if self.text else (140,146,158)
+        r=self._font.render(show, True, col)
+        surface.blit(r,(rect.left+10, rect.centery-r.get_height()//2))
+        if self.focused and int(self._caret_t*2)%2==0:
+            cx=rect.left+12+(self._font.size(self.text)[0] if self.text else 0)
+            pygame.draw.line(surface,(220,225,235),(cx,rect.centery-self.font_size//2),(cx,rect.centery+self.font_size//2),2)
+
+class UIRadioGroup(pymod.Component):
+    """A vertical set of options; one selected at a time. Options are strings. Emits the selected index via callback."""
+    def __init__(self, options=None, selected=0, dot_color=(90,170,240), text_color=(220,226,236), font_size=20, font_path=None, on_change_callback=None):
+        super().__init__()
+        self.options=options or ["Option A","Option B"]
+        self.selected=selected
+        self.dot_color=dot_color
+        self.text_color=text_color
+        self.font_size=font_size
+        self.font_path=font_path
+        self.on_change_callback=on_change_callback
+        self._font=None
+
+    def on_start(self):
+        self._font=pymod.assets.load_font(self.font_path, self.font_size)
+
+    def update(self):
+        if not pymod.input.mouse_pressed("left"):
+            return
+        rc=self.owner.get_component(UIRect)
+        if not rc:
+            return
+        mp=pymod.screen.window_to_render_coordinates(pymod.input.mouse_position)
+        rect=rc.rect; row_h=rect.height/max(1,len(self.options))
+        for i in range(len(self.options)):
+            rr=pygame.Rect(rect.left,rect.top+i*row_h,rect.width,row_h)
+            if rr.collidepoint(mp):
+                if i!=self.selected:
+                    self.selected=i
+                    if self.on_change_callback: self.on_change_callback(i)
+
+    def draw_ui(self, surface):
+        rc=self.owner.get_component(UIRect)
+        if not rc or not self._font:
+            return
+        rect=rc.rect; row_h=rect.height/max(1,len(self.options))
+        for i,opt in enumerate(self.options):
+            cy=int(rect.top+i*row_h+row_h/2); cx=rect.left+12
+            pygame.draw.circle(surface,(90,96,110),(cx,cy),8,2)
+            if i==self.selected: pygame.draw.circle(surface,self.dot_color,(cx,cy),4)
+            r=self._font.render(opt,True,self.text_color[:3])
+            surface.blit(r,(cx+18,cy-r.get_height()//2))
+
+class UIDropdown(UIInteractive):
+    """A select box. Click toggles a list of options drawn below it."""
+    def __init__(self, style_set, options=None, selected=0, font_size=20, font_path=None, on_change_callback=None):
+        super().__init__()
+        self.style_set=style_set
+        self.options=options or ["One","Two","Three"]
+        self.selected=selected
+        self.font_size=font_size; self.font_path=font_path
+        self.on_change_callback=on_change_callback
+        self.open=False
+        self._font=None
+
+    def on_start(self):
+        self._font=pymod.assets.load_font(self.font_path, self.font_size)
+
+    def on_click(self):
+        self.open=not self.open
+
+    def update(self):
+        if self.open and pymod.input.mouse_pressed("left"):
+            rc=self.owner.get_component(UIRect)
+            mp=pymod.screen.window_to_render_coordinates(pymod.input.mouse_position)
+            rect=rc.rect
+            row_h=rect.height
+            for i in range(len(self.options)):
+                rr=pygame.Rect(rect.left,rect.bottom+i*row_h,rect.width,row_h)
+                if rr.collidepoint(mp):
+                    self.selected=i; self.open=False
+                    if self.on_change_callback:
+                        self.on_change_callback(i)
+                    return
+            if not self.hovered: self.open=False
+    def draw_ui(self, surface):
+        rc=self.owner.get_component(UIRect)
+        if not rc or not self._font:
+            return
+        style=self.style_set.resolve(self._state(), pymod.time.unscaled_delta)
+        rect=style.paint(surface, rc.rect)
+        label=self._font.render(self.options[self.selected], True, style.text_color[:3])
+        surface.blit(label,(rect.left+10, rect.centery-label.get_height()//2))
+        # arrow
+        ax=rect.right-18; ay=rect.centery
+        pygame.draw.polygon(surface,style.text_color[:3],[(ax-5,ay-3),(ax+5,ay-3),(ax,ay+4)])
+        if self.open:
+            row_h=rect.height
+            for i,opt in enumerate(self.options):
+                rr=pygame.Rect(rect.left,rect.bottom+i*row_h,rect.width,row_h)
+                pygame.draw.rect(surface,(28,32,44),rr)
+                pygame.draw.rect(surface,(50,56,70),rr,1)
+                r=self._font.render(opt,True,(220,226,236))
+                surface.blit(r,(rr.left+10,rr.centery-r.get_height()//2))
+
+class UITooltip(pymod.Component):
+    """Shows a text bubble after the mouse hovers the owner for `delay` sec.
+
+    Attach alongside an interactive element (or any element with a UIRect).
+    """
+    def __init__(self, text="", delay=0.5, font_size=16, font_path=None, bg=(20,24,32), fg=(230,235,244)):
+        super().__init__()
+        self.text=text
+        self.delay=delay
+        self.font_size=font_size
+        self.font_path=font_path
+        self.bg=bg
+        self.fg=fg
+        self._hover_t=0.0
+        self._font=None
+
+    def on_start(self):
+        self._font=pymod.assets.load_font(self.font_path, self.font_size)
+
+    def update(self):
+        rc=self.owner.get_component(UIRect)
+        if not rc:
+            return
+        mp=pymod.screen.window_to_render_coordinates(pymod.input.mouse_position)
+        if rc.contains_point(*mp):
+            self._hover_t+=pymod.time.unscaled_delta
+        else:
+            self._hover_t=0.0
+
+    def draw_ui(self, surface):
+        if self._hover_t<self.delay or not self._font or not self.text:
+            return
+        rc=self.owner.get_component(UIRect)
+        rect=rc.rect
+        r=self._font.render(self.text, True, self.fg[:3])
+        pad=8; bw,bh=r.get_width()+pad*2, r.get_height()+pad*2
+        bx,by=rect.centerx-bw//2, rect.top-bh-8
+        pygame.draw.rect(surface,self.bg,(bx,by,bw,bh),border_radius=6)
+        surface.blit(r,(bx+pad,by+pad))
+
+class UIScrollView(pymod.Component):
+    """A clipping container with a vertical scroll offset. Children are laid out normally but drawn through a clip + offset.
+
+    Scroll with the wheel while hovered. (The UIManager draws children; this shifts + clips them.)
+    """
+    def __init__(self, content_height=0, bg_color=(22,26,36), corner_radius=8):
+        super().__init__()
+        self.content_height=content_height
+        self.bg_color=bg_color
+        self.corner_radius=corner_radius
+        self.scroll_offset=0.0
+    def update(self):
+        rc=self.owner.get_component(UIRect)
+        if not rc: return
+        mp=pymod.screen.window_to_render_coordinates(pymod.input.mouse_position)
+        if rc.contains_point(*mp):
+            w=pymod.input.mouse_wheel
+            if w:
+                self.scroll_offset=max(0.0, min(max(0,self.content_height-rc.rect.height),
+                                                self.scroll_offset - w*30))
+    def draw_ui(self, surface):
+        rc=self.owner.get_component(UIRect)
+        if not rc:
+            return
+        pygame.draw.rect(surface,self.bg_color,rc.rect,border_radius=self.corner_radius)
+        # scrollbar
+        if self.content_height>rc.rect.height:
+            track=rc.rect
+            ratio=track.height/self.content_height
+            bar_h=max(24,int(track.height*ratio))
+            max_off=self.content_height-track.height
+            t=self.scroll_offset/max_off if max_off else 0
+            by=track.top+int((track.height-bar_h)*t)
+            pygame.draw.rect(surface,(70,78,94),(track.right-6,by,4,bar_h),border_radius=2)
