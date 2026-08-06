@@ -70,6 +70,7 @@ class InputManager:
             "f1": pygame.K_F1, "f2": pygame.K_F2, "f3": pygame.K_F3, "f4": pygame.K_F4,
             "f5": pygame.K_F5, "f6": pygame.K_F6, "f7": pygame.K_F7, "f8": pygame.K_F8,
             "f9": pygame.K_F9, "f10": pygame.K_F10, "f11": pygame.K_F11, "f12": pygame.K_F12,
+            "delete": pygame.K_DELETE, "home": pygame.K_HOME, "end": pygame.K_END,
         }
 
         # reverse lookup for keycode -> name
@@ -515,9 +516,6 @@ class InputManager:
         for gamepad_id in self._gamepad_buttons_current:
             self._gamepad_buttons_previous[gamepad_id] = self._gamepad_buttons_current[gamepad_id].copy()
 
-        # read fresh state from pygame
-        pressed_keys = pygame.key.get_pressed()
-        self._keys_current = {i for i in range(len(pressed_keys)) if pressed_keys[i]}
 
         mouse_buttons = pygame.mouse.get_pressed()
         self._mouse_buttons_current = {i for i in range(len(mouse_buttons)) if mouse_buttons[i]}
@@ -549,6 +547,21 @@ class InputManager:
         Args:
             event: The pygame event to process.
         """
+        # Track key state from events, not pygame.key.get_pressed().
+        # get_pressed() can only be indexed below 512, but arrows, Home/End,
+        # modifiers and F-keys all have keycodes above 1073741882, so scanning
+        # range(len(get_pressed())) silently drops every one of them.
+        if event.type == pygame.KEYDOWN:
+            self._keys_current.add(event.key)
+        elif event.type == pygame.KEYUP:
+            self._keys_current.discard(event.key)
+
+        # A key held while the window loses focus never delivers its KEYUP,
+        # so it would stick down forever. Same for mouse buttons.
+        elif event.type == pygame.WINDOWFOCUSLOST:
+            self._keys_current.clear()
+            self._mouse_buttons_current.clear()
+
         # if listening for rebind, intercept first input and stop listening
         if self._listening:
             detected_input = None
@@ -570,6 +583,9 @@ class InputManager:
                     self._listening_callback(detected_input)
                 return  # consume the event, don't process normally
 
+        # text entry — TEXTINPUT gives the composed character (handles shift,
+        # dead keys, IME). Do NOT also read KEYDOWN.unicode or every character
+        # arrives twice, since SDL has text input enabled by default.
         if event.type == pygame.TEXTINPUT:
             self._text_typed_pending += event.text
 

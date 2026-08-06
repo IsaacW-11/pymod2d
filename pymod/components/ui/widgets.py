@@ -428,52 +428,98 @@ class UIIcon(pymod.Component):
 
 class UITextInput(UIInteractive):
     """Typed text entry. Focus on click; types via pymod.input text events."""
+
     def __init__(self, style_set, text="", placeholder="", font_size=20, font_path=None,
                  max_length=64, on_change_callback=None):
         super().__init__()
-        self.style_set=style_set
-        self.text=text
-        self.placeholder=placeholder
-        self.font_size=font_size
-        self.font_path=font_path
-        self.max_length=max_length
-        self.on_change_callback=on_change_callback
-        self.focused=False
-        self._font=None
-        self._caret_t=0.0
+        self.style_set = style_set
+        self.text = text
+        self.placeholder = placeholder
+        self.font_size = font_size
+        self.font_path = font_path
+        self.max_length = max_length
+        self.on_change_callback = on_change_callback
+        self.focused = False
+        self.caret = len(text)  # insertion point, 0..len(text)
+        self._font = None
+        self._caret_t = 0.0
 
     def on_start(self):
-        self._font=pymod.assets.load_font(self.font_path, self.font_size)
+        self._font = pymod.assets.load_font(self.font_path, self.font_size)
 
     def on_click(self):
-        self.focused=True
+        pass  # focus is owned by UIManager
 
-    def _defocus(self):
-        self.focused=False
+    def on_press(self):
+        """Place the caret at the clicked character."""
+        rc = self.owner.get_component(UIRect)
+        if not rc or not self._font:
+            return
+        mx = pymod.Game.get().screen.window_to_render_coordinates(
+            pymod.input.mouse_position)[0]
+        local = mx - (rc.rect.left + 10)
+        best, best_d = 0, abs(local)
+        for i in range(1, len(self.text) + 1):
+            d = abs(self._font.size(self.text[:i])[0] - local)
+            if d < best_d:
+                best, best_d = i, d
+        self.caret = best
+        self._caret_t = 0.0  # show the caret immediately
+
+    def _changed(self):
+        self._caret_t = 0.0
+        if self.on_change_callback:
+            self.on_change_callback(self.text)
 
     def type_char(self, ch):
-        if len(self.text)<self.max_length:
-            self.text+=ch
-            if self.on_change_callback: self.on_change_callback(self.text)
+        if len(self.text) >= self.max_length:
+            return
+        self.text = self.text[:self.caret] + ch + self.text[self.caret:]
+        self.caret += 1
+        self._changed()
 
     def backspace(self):
-        self.text=self.text[:-1]
-        if self.on_change_callback: self.on_change_callback(self.text)
+        if self.caret <= 0:
+            return
+        self.text = self.text[:self.caret - 1] + self.text[self.caret:]
+        self.caret -= 1
+        self._changed()
+
+    def delete_forward(self):
+        if self.caret >= len(self.text):
+            return
+        self.text = self.text[:self.caret] + self.text[self.caret + 1:]
+        self._changed()
+
+    def move_caret(self, delta):
+        self.caret = max(0, min(len(self.text), self.caret + delta))
+        self._caret_t = 0.0
+
+    def caret_home(self):
+        self.caret = 0
+        self._caret_t = 0.0
+
+    def caret_end(self):
+        self.caret = len(self.text)
+        self._caret_t = 0.0
 
     def draw_ui(self, surface):
         self._caret_t += pymod.time.unscaled_delta
-        rc=self.owner.get_component(UIRect)
-        if not rc or not self._font: return
-        state="hover" if self.focused else self._state()
-        style=self.style_set.resolve(state, pymod.time.unscaled_delta)
-        rect=style.paint(surface, rc.rect)
-        show=self.text if self.text else self.placeholder
-        col=style.text_color[:3] if self.text else (140,146,158)
-        r=self._font.render(show, True, col)
-        surface.blit(r,(rect.left+10, rect.centery-r.get_height()//2))
-        if self.focused and int(self._caret_t*2)%2==0:
-            cx=rect.left+12+(self._font.size(self.text)[0] if self.text else 0)
-            pygame.draw.line(surface,(220,225,235),(cx,rect.centery-self.font_size//2),(cx,rect.centery+self.font_size//2),2)
+        rc = self.owner.get_component(UIRect)
+        if not rc or not self._font:
+            return
+        state = "hover" if self.focused else self._state()
+        style = self.style_set.resolve(state, pymod.time.unscaled_delta)
+        rect = style.paint(surface, rc.rect)
+        show = self.text if self.text else self.placeholder
+        col = style.text_color[:3] if self.text else (140, 146, 158)
+        r = self._font.render(show, True, col)
+        surface.blit(r, (rect.left + 10, rect.centery - r.get_height() // 2))
+        if self.focused and int(self._caret_t * 2) % 2 == 0:
+            cx = rect.left + 10 + self._font.size(self.text[:self.caret])[0]
+            pygame.draw.line(surface, (220, 225, 235),
+                             (cx, rect.centery - self.font_size // 2),
+                             (cx, rect.centery + self.font_size // 2), 2)
 
 class UIRadioGroup(pymod.Component):
     """A vertical set of options; one selected at a time. Options are strings. Emits the selected index via callback."""

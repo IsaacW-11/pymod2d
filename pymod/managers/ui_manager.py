@@ -41,6 +41,10 @@ class UIManager:
         self._loaded_actions: dict = {}
         self._last_mtime: float = 0.0
 
+        self._repeat_state: dict[str, list[float]] = {}
+        self.key_repeat_delay: float = 0.45   # before repeating starts
+        self.key_repeat_rate: float = 0.04    # between repeats
+
         self._focused = None
 
         self._debug_font: pygame.font.Font | None = None
@@ -98,18 +102,48 @@ class UIManager:
             self._last_mtime = mtime
             self.reload_layout()
 
-    def _forward_text_input(self):
+    def _repeat_key(self, key: str, action, dt: float) -> None:
+        """Fire `action` once on press, then repeatedly while held.
+
+        Printable characters repeat for free because the OS generates a
+        fresh TEXTINPUT event per repeat. Non-printable keys (backspace,
+        delete, arrows) produce no TEXTINPUT, so they need this.
+        """
+        state = self._repeat_state.setdefault(key, [0.0, 0.0])
+        if pymod.input.key_held(key):
+            if state[0] == 0.0:
+                action()
+                state[1] = self.key_repeat_delay
+            state[0] += dt
+            if state[0] >= state[1]:
+                action()
+                state[1] = state[0] + self.key_repeat_rate
+        else:
+            state[0] = 0.0
+
+    def _forward_text_input(self) -> None:
         if self._focused is None:
+            self._repeat_state.clear()
             return
         if pymod.input.key_pressed("escape"):
             self._focused.focused = False
             self._focused = None
+            self._repeat_state.clear()
             return
+
+        field = self._focused
         for ch in pymod.input.text_typed:
             if ch.isprintable():
-                self._focused.type_char(ch)
-        if pymod.input.key_pressed("backspace"):
-            self._focused.backspace()
+                field.type_char(ch)
+
+        # unscaled_delta so text editing still works while the game is paused
+        dt = pymod.time.unscaled_delta
+        self._repeat_key("backspace", field.backspace, dt)
+        self._repeat_key("delete", field.delete_forward, dt)
+        self._repeat_key("left", lambda: field.move_caret(-1), dt)
+        self._repeat_key("right", lambda: field.move_caret(1), dt)
+        self._repeat_key("home", field.caret_home, dt)
+        self._repeat_key("end", field.caret_end, dt)
 
     def _update(self, scene) -> None:
         """Internal method called each frame by Game. Recalculates layout, routes input, and handles hot-reload."""
