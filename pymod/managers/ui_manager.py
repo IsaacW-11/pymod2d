@@ -148,10 +148,10 @@ class UIManager:
             recurse(root)
 
     def _route_input(self, ui_objects) -> None:
-        """Find the topmost interactive element under the mouse and give it hover/press state. \
-        Later objects in the list draw on top, so we search in reverse."""
+        """Find the topmost interactive element under the mouse and give it
+        hover/press state. Later objects draw on top, so search in reverse."""
         from ..components.ui.ui_rect import UIRect
-        from ..components.ui.widgets import UIInteractive
+        from ..components.ui.widgets import UIInteractive, UIDropdown, UITextInput
 
         mouse = pymod.input.mouse_position
         mouse = pymod.Game.get().screen.window_to_render_coordinates(mouse)
@@ -172,12 +172,10 @@ class UIManager:
 
         # an expanded dropdown's option list extends below its own rect,
         # so it isn't caught by the normal hit test
-        from ..components.ui.widgets import UIDropdown
-        from ..components.ui.ui_rect import UIRect as _UIRect
         for obj in ui_objects:
             dd = obj.get_component(UIDropdown)
             if dd is not None and dd.open:
-                rc = obj.get_component(_UIRect)
+                rc = obj.get_component(UIRect)
                 if rc is not None:
                     r = rc.rect
                     listbox = pygame.Rect(r.left, r.bottom, r.width,
@@ -193,9 +191,7 @@ class UIManager:
                 found._on_hover_enter()
             self._hovered = found
 
-        # press / release
-        from ..components.ui.widgets import UITextInput
-
+        # focus: a click anywhere re-decides which text field owns the keyboard
         if pymod.input.mouse_pressed("left"):
             new_focus = found if isinstance(found, UITextInput) else None
             if self._focused is not new_focus:
@@ -204,6 +200,21 @@ class UIManager:
                 self._focused = new_focus
                 if new_focus is not None:
                     new_focus.focused = True
+
+        # press / release
+        if found is not None:
+            if pymod.input.mouse_pressed("left"):
+                self._pressed = found
+                found._on_press()
+            elif pymod.input.mouse_released("left"):
+                if self._pressed is found:
+                    found._on_release()
+                    found._on_click()
+                self._pressed = None
+        elif pymod.input.mouse_released("left"):
+            if self._pressed is not None:
+                self._pressed._on_release()
+            self._pressed = None
 
 
 
