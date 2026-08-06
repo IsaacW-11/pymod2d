@@ -95,11 +95,18 @@ def _widget(obj,t,el,actions):
             on_change_callback=actions.get(el.get("action"))))
     elif t=="toggle":
         obj.add_component(UIToggle(el.get("value",False),on_change_callback=actions.get(el.get("action"))))
-    elif t=="progress":
-        fs=build_style_set(_style_dict(el.get("fill_style",{}))) if el.get("fill_style") else None
-        obj.add_component(UIProgressBar(el.get("value",0.5),
-            tuple(el.get("track_color",(40,44,56))),tuple(el.get("fill_color",(90,180,140))),
-            el.get("corner_radius",6),fs))
+    elif t == "progress":
+        # a progress bar's fill can come from an explicit "fill_style" block
+        # or, more conveniently, from a top-level "gradient" on the element
+        fill_src = el.get("fill_style")
+        if fill_src is None and el.get("gradient"):
+            fill_src = {"gradient": el["gradient"],
+                        "corner_radius": el.get("corner_radius", 6)}
+        fs = build_style_set(_style_dict(fill_src)) if fill_src else None
+        obj.add_component(UIProgressBar(el.get("value", 0.5),
+                                        tuple(el.get("track_color", (40, 44, 56))),
+                                        tuple(el.get("fill_color", (90, 180, 140))),
+                                        el.get("corner_radius", 6), fs))
     elif t=="divider":
         obj.add_component(UIDivider(tuple(el.get("color",(70,78,94))),el.get("thickness",2),
             el.get("orientation","horizontal")))
