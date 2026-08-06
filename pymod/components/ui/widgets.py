@@ -112,7 +112,7 @@ class UIImage(pymod.Component):
             return
         style = self.style_set.resolve("normal", pymod.time.unscaled_delta)
         rect = rc.rect
-        body = style.render_body_surface(rect.size, max(0, int(style.corner_radius)))
+        body = style.render_body_surface(rect.size, max(0, int(style.corner_radius))).copy()
         if self._image is not None:
             img=pygame.transform.smoothscale(self._image, rect.size)
             body.blit(img,(0,0))
@@ -236,7 +236,7 @@ class UIButton(UIInteractive):
         style=self.style_set.resolve(self._state(), pymod.time.unscaled_delta)
         base=rc.rect
         trect=style.transformed_rect(base)
-        body=style.render_body_surface(trect.size, max(0,int(style.corner_radius)))
+        body = style.render_body_surface(trect.size, max(0, int(style.corner_radius))).copy()
 
         if self._font and self.text:
             label=self._font.render(self.text, True, style.text_color[:3])
