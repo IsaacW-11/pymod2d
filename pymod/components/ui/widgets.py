@@ -161,23 +161,25 @@ class UIText(pymod.Component):
 
     def draw_ui(self, surface):
         rc = self.owner.get_component(UIRect)
-        if rc is None or self._font is None:
+        if not rc or not self._font:
             return
         rect = rc.rect
-
         lines = self._wrap(rect.width) if self.wrap else [self.text]
-        line_h = self._font.get_height()
-        total_h = line_h * len(lines)
-
-        # render to a surface so we can rotate
-        buf=pygame.Surface(rect.size, pygame.SRCALPHA)
-        y=(0 if self.valign=="top" else rect.height-total_h if self.valign=="bottom" else rect.height//2-total_h//2)
-
+        lh = self._font.get_height()
+        total = lh * len(lines)
+        # draw upright into a buffer at LOCAL coords, then place by rect
+        buf = pygame.Surface(rect.size, pygame.SRCALPHA)
+        y = (0 if self.valign == "top"
+             else rect.height - total if self.valign == "bottom"
+             else rect.height // 2 - total // 2)
         for line in lines:
-            rendered = self._font.render(line, True, self.color[:3])
-            x = (0 if self.align == "left" else rect.width - rendered.get_width() if self.align == "right" else rect.width // 2 - rendered.get_width() // 2)
-            surface.blit(rendered, (x, y))
-            buf.blit(rendered,(x,y)); y+=line_h
+            r = self._font.render(line, True, self.color[:3])
+            x = (0 if self.align == "left"
+                 else rect.width - r.get_width() if self.align == "right"
+                 else rect.width // 2 - r.get_width() // 2)
+            buf.blit(r, (x, y))
+            y += lh
+        _rotate_blit(surface, buf, rect.center, rc.rotation)
 
     def _wrap(self, max_width):
         words = self.text.split(" ")
@@ -352,20 +354,22 @@ class UIProgressBar(pymod.Component):
         self.corner_radius=corner_radius; self.fill_style=fill_style
 
     def draw_ui(self, surface):
-        rc=self.owner.get_component(UIRect)
+        rc = self.owner.get_component(UIRect)
         if not rc:
             return
-        rect=rc.rect; r=self.corner_radius
-        pygame.draw.rect(surface,self.track_color,rect,border_radius=r)
-        fw=int(rect.width*max(0.0,min(1.0,self.value)))
-        if fw<=0:
-            return
-        frect=pygame.Rect(rect.left,rect.top,fw,rect.height)
-        if self.fill_style:
-            st=self.fill_style.resolve("normal", pymod.time.unscaled_delta)
-            body=st.render_body_surface(frect.size, r); surface.blit(body,frect.topleft)
-        else:
-            pygame.draw.rect(surface,self.fill_color,frect,border_radius=r)
+        rect = rc.rect
+        r = int(self.corner_radius)
+        buf = pygame.Surface(rect.size, pygame.SRCALPHA)
+        pygame.draw.rect(buf, self.track_color, buf.get_rect(), border_radius=r)
+        fw = int(rect.width * max(0.0, min(1.0, self.value)))
+        if fw > 0:
+            frect = pygame.Rect(0, 0, fw, rect.height)
+            if self.fill_style:
+                st = self.fill_style.resolve("normal", pymod.time.unscaled_delta)
+                buf.blit(st.render_body_surface(frect.size, r), (0, 0))
+            else:
+                pygame.draw.rect(buf, self.fill_color, frect, border_radius=r)
+        _rotate_blit(surface, buf, rect.center, rc.rotation)
 
 class UIDivider(pymod.Component):
     """A separator line, horizontal or vertical, centred in its rect."""
@@ -379,13 +383,16 @@ class UIDivider(pymod.Component):
         rc=self.owner.get_component(UIRect)
         if not rc:
             return
-        rect=rc.rect
-        if self.orientation=="horizontal":
-            y=rect.centery
-            pygame.draw.line(surface,self.color[:3],(rect.left,y),(rect.right,y),self.thickness)
+        rect = rc.rect
+        buf = pygame.Surface(rect.size, pygame.SRCALPHA)
+        t = max(1, int(self.thickness))
+        if self.orientation == "horizontal":
+            y = rect.height // 2
+            pygame.draw.line(buf, self.color, (0, y), (rect.width, y), t)
         else:
-            x=rect.centerx
-            pygame.draw.line(surface,self.color[:3],(x,rect.top),(x,rect.bottom),self.thickness)
+            x = rect.width // 2
+            pygame.draw.line(buf, self.color, (x, 0), (x, rect.height), t)
+        _rotate_blit(surface, buf, rect.center, rc.rotation)
 
 class UIIcon(pymod.Component):
     """A shape icon (circle/square/triangle/diamond) or an image icon."""
@@ -400,18 +407,24 @@ class UIIcon(pymod.Component):
         rc=self.owner.get_component(UIRect)
         if not rc:
             return
-        rect=rc.rect
+        rect = rc.rect
+        buf = pygame.Surface(rect.size, pygame.SRCALPHA)
         if self._image is not None:
-            surface.blit(pygame.transform.smoothscale(self._image, rect.size), rect.topleft); return
-        c=self.color[:3]; cx,cy=rect.center; r=min(rect.width,rect.height)//2
-        if self.shape=="circle":
-            pygame.draw.circle(surface,c,(cx,cy),r)
-        elif self.shape=="square":
-            pygame.draw.rect(surface,c,rect.inflate(-4,-4),border_radius=4)
-        elif self.shape=="triangle":
-            pygame.draw.polygon(surface,c,[(cx,cy-r),(cx-r,cy+r),(cx+r,cy+r)])
-        elif self.shape=="diamond":
-            pygame.draw.polygon(surface,c,[(cx,cy-r),(cx+r,cy),(cx,cy+r),(cx-r,cy)])
+            buf.blit(pygame.transform.smoothscale(self._image, rect.size), (0, 0))
+        else:
+            c = self.color
+            w, h = rect.width, rect.height
+            cx, cy = w // 2, h // 2
+            r = min(w, h) // 2
+            if self.shape == "circle":
+                pygame.draw.circle(buf, c, (cx, cy), r)
+            elif self.shape == "square":
+                pygame.draw.rect(buf, c, buf.get_rect().inflate(-4, -4), border_radius=4)
+            elif self.shape == "triangle":
+                pygame.draw.polygon(buf, c, [(cx, cy - r), (cx - r, cy + r), (cx + r, cy + r)])
+            elif self.shape == "diamond":
+                pygame.draw.polygon(buf, c, [(cx, cy - r), (cx + r, cy), (cx, cy + r), (cx - r, cy)])
+        _rotate_blit(surface, buf, rect.center, rc.rotation)
 
 class UITextInput(UIInteractive):
     """Typed text entry. Focus on click; types via pymod.input text events."""
