@@ -447,13 +447,8 @@ class UITextInput(UIInteractive):
         self.text=self.text[:-1]
         if self.on_change_callback: self.on_change_callback(self.text)
 
-    def update(self):
-        self._caret_t+=pymod.time.unscaled_delta
-        # defocus if clicking elsewhere
-        if self.focused and pymod.input.mouse_pressed("left") and not self.hovered:
-            self._defocus()
-
     def draw_ui(self, surface):
+        self._caret_t += pymod.time.unscaled_delta
         rc=self.owner.get_component(UIRect)
         if not rc or not self._font: return
         state="hover" if self.focused else self._state()
@@ -553,14 +548,18 @@ class UIDropdown(UIInteractive):
         # arrow
         ax=rect.right-18; ay=rect.centery
         pygame.draw.polygon(surface,style.text_color[:3],[(ax-5,ay-3),(ax+5,ay-3),(ax,ay+4)])
-        if self.open:
-            row_h=rect.height
-            for i,opt in enumerate(self.options):
-                rr=pygame.Rect(rect.left,rect.bottom+i*row_h,rect.width,row_h)
-                pygame.draw.rect(surface,(28,32,44),rr)
-                pygame.draw.rect(surface,(50,56,70),rr,1)
-                r=self._font.render(opt,True,(220,226,236))
-                surface.blit(r,(rr.left+10,rr.centery-r.get_height()//2))
+
+    def draw_ui_overlay(self, surface):
+        if not self.open or not self._font: return
+        rc=self.owner.get_component(UIRect)
+        if not rc: return
+        rect=rc.rect; row_h=rect.height
+        for i,opt in enumerate(self.options):
+            rr=pygame.Rect(rect.left,rect.bottom+i*row_h,rect.width,row_h)
+            pygame.draw.rect(surface,(28,32,44),rr)
+            pygame.draw.rect(surface,(50,56,70),rr,1)
+            r=self._font.render(opt,True,(220,226,236))
+            surface.blit(r,(rr.left+10,rr.centery-r.get_height()//2))
 
 class UITooltip(pymod.Component):
     """Shows a text bubble after the mouse hovers the owner for `delay` sec.
@@ -591,7 +590,7 @@ class UITooltip(pymod.Component):
         else:
             self._hover_t=0.0
 
-    def draw_ui(self, surface):
+    def draw_ui_overlay(self, surface):
         if self._hover_t<self.delay or not self._font or not self.text:
             return
         rc=self.owner.get_component(UIRect)
@@ -613,6 +612,7 @@ class UIScrollView(pymod.Component):
         self.bg_color=bg_color
         self.corner_radius=corner_radius
         self.scroll_offset=0.0
+
     def update(self):
         rc=self.owner.get_component(UIRect)
         if not rc: return

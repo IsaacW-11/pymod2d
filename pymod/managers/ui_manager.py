@@ -41,6 +41,8 @@ class UIManager:
         self._loaded_actions: dict = {}
         self._last_mtime: float = 0.0
 
+        self._focused = None
+
         self._debug_font: pygame.font.Font | None = None
 
     # INPUT ROUTING
@@ -96,6 +98,17 @@ class UIManager:
             self._last_mtime = mtime
             self.reload_layout()
 
+    def _forward_text_input(self):
+        """Send typed characters and backspace to the focused text field."""
+        if self._focused is None:
+            return
+        typed = pymod.input.text_typed
+        for ch in typed:
+            if ch.isprintable():
+                self._focused.type_char(ch)
+        if pymod.input.key_pressed("backspace"):
+            self._focused.backspace()
+
     def _update(self, scene) -> None:
         """Internal method called each frame by Game. Recalculates layout, routes input, and handles hot-reload."""
         self._check_hot_reload()
@@ -107,6 +120,7 @@ class UIManager:
 
         self._recalculate_layout(ui_objects)
         self._route_input(ui_objects)
+        self._forward_text_input()
 
     def _recalculate_layout(self, ui_objects) -> None:
         """Recompute every UIRect top-down, parents before children, then run any layout groups which reposition their children."""
@@ -154,6 +168,21 @@ class UIManager:
 
         self._mouse_over_ui = found is not None
 
+        # an expanded dropdown's option list extends below its own rect,
+        # so it isn't caught by the normal hit test
+        from ..components.ui.widgets import UIDropdown
+        from ..components.ui.ui_rect import UIRect as _UIRect
+        for obj in ui_objects:
+            dd = obj.get_component(UIDropdown)
+            if dd is not None and dd.open:
+                rc = obj.get_component(_UIRect)
+                if rc is not None:
+                    r = rc.rect
+                    listbox = pygame.Rect(r.left, r.bottom, r.width,
+                                          r.height * len(dd.options))
+                    if listbox.collidepoint(*mouse):
+                        self._mouse_over_ui = True
+
         # hover transitions
         if self._hovered is not found:
             if self._hovered is not None:
@@ -163,16 +192,17 @@ class UIManager:
             self._hovered = found
 
         # press / release
-        if found is not None:
-            if pymod.input.mouse_pressed("left"):
-                self._pressed = found
-                found._on_press()
-            elif pymod.input.mouse_released("left") and self._pressed is found:
-                print(
-                    f"CLICK fired on {type(found).__name__}, callback: {found.on_click_callback if hasattr(found, 'on_click_callback') else 'n/a'}")
-                found._on_release()
-                found._on_click()
-                self._pressed = None
+        from ..components.ui.widgets import UITextInput
+
+        # clicking anywhere re-decides which text field has focus
+        if pymod.input.mouse_pressed("left"):
+            new_focus = found if isinstance(found, UITextInput) else None
+            if self._focused is not new_focus:
+                if self._focused is not None:
+                    self._focused.focused = False
+                if new_focus is not None:
+                    new_focus.focused = True
+                self._focused = new_focus
         elif pymod.input.mouse_released("left"):
             if self._pressed is not None:
                 self._pressed._on_release()
@@ -197,11 +227,41 @@ class UIManager:
                 for component in obj._components.values():
                     if hasattr(component, "draw_ui"):
                         component.draw_ui(surface)
+
+            from ..components.ui.widgets import UIScrollView
+            from ..components.ui.ui_rect import UIRect
+            sv = obj.get_component(UIScrollView)
+            if sv is not None:
+                rc = obj.get_component(UIRect)
+                old_clip = surface.get_clip()
+                surface.set_clip(rc.rect)
+                for child in obj.children:
+                    crc = child.get_component(UIRect)
+                    if crc is not None:
+                        crc._rect.y -= int(sv.scroll_offset)
+                    recurse(child)
+                    if crc is not None:
+                        crc._rect.y += int(sv.scroll_offset)
+                surface.set_clip(old_clip)
+                return
             for child in obj.children:
                 recurse(child)
 
         for root in roots:
             recurse(root)
+
+        # overlay pass — tooltips and open dropdown lists must sit above
+        # everything else regardless of hierarchy order
+        def recurse_overlay(obj):
+            if obj.visible:
+                for component in obj._components.values():
+                    if hasattr(component, "draw_ui_overlay"):
+                        component.draw_ui_overlay(surface)
+            for child in obj.children:
+                recurse_overlay(child)
+
+        for root in roots:
+            recurse_overlay(root)
 
         if self.debug_draw:
             self._draw_debug(surface, ui_objects)
