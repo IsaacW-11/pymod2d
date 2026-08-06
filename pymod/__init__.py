@@ -40,11 +40,27 @@ from .events import CollisionEvent
 from .components import UIAnchor
 
 class _ManagerProxy:
-    def __init__(self, manager_name: str):
-        self._name = manager_name
+    __slots__ = ("_system_name",)
 
-    def __getattr__(self, attr: str):
-        return getattr(Game.get().__dict__[self._name], attr)
+    def __init__(self, system_name):
+        object.__setattr__(self, "_system_name", system_name)
+
+    def _target(self):
+        game = Game.get()
+        if game is None:
+            raise RuntimeError(
+                f"pymod.{self._system_name} used before a Game was created"
+            )
+        return getattr(game, self._system_name)
+
+    def __getattr__(self, item):
+        return getattr(self._target(), item)
+
+    def __setattr__(self, item, value):
+        setattr(self._target(), item, value)
+
+    def __repr__(self):
+        return f"<pymod.{self._system_name} proxy>"
 
 scenes: SceneManager = _ManagerProxy('scenes')
 time: TimeManager = _ManagerProxy('time')
