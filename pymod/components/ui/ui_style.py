@@ -16,6 +16,28 @@ def lerp_colour(a, b, t):
             int(lerp(a[2], b[2], t)),
             int(lerp(a[3] if len(a) > 3 else 255, b[3] if len(b) > 3 else 255, t)))
 
+# Gradients and shadows are expensive to build and almost always identical
+# frame to frame. Without this a full-screen radial cost ~80ms/frame.
+_BODY_CACHE = {}
+_SHADOW_CACHE = {}
+_CACHE_LIMIT = 400          # blends during transitions churn keys
+GRAD_RES = 64               # gradients render at this res then upscale
+
+
+def _cached(cache, key, build):
+    surf = cache.get(key)
+    if surf is None:
+        if len(cache) >= _CACHE_LIMIT:
+            cache.clear()
+        surf = build()
+        cache[key] = surf
+    return surf
+
+
+def clear_ui_caches():
+    """Drop cached surfaces (e.g. on resolution change)."""
+    _BODY_CACHE.clear()
+    _SHADOW_CACHE.clear()
 
 @dataclass
 class Shadow:
@@ -48,6 +70,13 @@ class Gradient:
     type: str = "linear"
     angle: float = 90.0
     enabled: bool = False
+
+    def signature(self):
+        """Everything affecting this gradient's pixels, for cache keys."""
+        if not self.enabled:
+            return None
+        return (self.type, round(self.angle, 1),
+                tuple((tuple(st.color), round(st.pos, 4)) for st in self.stops))
 
     def colour_at(self, t: float):
         """Sample the gradient at t in [0,1] by interpolating between stops."""
@@ -125,6 +154,7 @@ class Style:
             self._paint_shadow(surface, rect, r)
         body = self._render_body(rect.size, r)
         if self.opacity < 255:
+            body = body.copy()          # never mutate the cached surface
             body.set_alpha(self.opacity)
         surface.blit(body, rect.topleft)
         if self.border.enabled and self.border.width > 0:
@@ -133,76 +163,80 @@ class Style:
         return rect
 
     def render_body_surface(self, size, radius):
-        """Public: get the fill as a surface (used by rotation path)."""
         return self._render_body(size, radius)
 
     def _paint_shadow(self, surface, rect, radius):
         sh = self.shadow
-        layers = max(1, sh.blur)
+        key = (rect.width, rect.height, radius, tuple(sh.color),
+               int(sh.blur), int(sh.spread))
+        grow = int(sh.spread + max(1, int(sh.blur)))
+        surf = _cached(_SHADOW_CACHE, key,
+                       lambda: self._build_shadow(rect.size, radius, grow))
+        surface.blit(surf, (rect.x + sh.offset[0] - grow,
+                            rect.y + sh.offset[1] - grow))
+
+    def _build_shadow(self, size, radius, grow):
+        """Build the whole soft shadow ONCE onto a transparent surface."""
+        sh = self.shadow
+        w, h = max(1, int(size[0])), max(1, int(size[1]))
+        surf = pygame.Surface((w + grow * 2, h + grow * 2), pygame.SRCALPHA)
+        layers = max(1, int(sh.blur))
         for i in range(layers, 0, -1):
-            grow = int(sh.spread + i)
-            a = int(sh.color[3] * (1 - i/layers) / max(1, layers) * 3)
-            if a <= 0: continue
-            lr = pygame.Rect(0, 0, rect.width + grow*2, rect.height + grow*2)
-            layer = pygame.Surface(lr.size, pygame.SRCALPHA)
-            pygame.draw.rect(layer, (*sh.color[:3], a), layer.get_rect(),
-                             border_radius=radius + grow)
-            surface.blit(layer, (rect.x + sh.offset[0] - grow, rect.y + sh.offset[1] - grow))
+            g = int(sh.spread + i)
+            a = int(sh.color[3] * (1 - i / layers) / max(1, layers) * 3)
+            if a <= 0:
+                continue
+            r = pygame.Rect(grow - g, grow - g, w + g * 2, h + g * 2)
+            pygame.draw.rect(surf, (*sh.color[:3], a), r,
+                             border_radius=max(0, radius + g))
+        return surf
 
     def _render_body(self, size, radius):
         w, h = max(1, int(size[0])), max(1, int(size[1]))
+        gsig = self.gradient.signature()
+        key = (w, h, radius, None if gsig else tuple(self.color), gsig)
+        return _cached(_BODY_CACHE, key, lambda: self._build_body(w, h, radius))
+
+    def _build_body(self, w, h, radius):
         surf = pygame.Surface((w, h), pygame.SRCALPHA)
         if self.gradient.enabled:
-            grad = (self._render_radial((w, h)) if self.gradient.type == "radial"
-                    else self._render_linear((w, h)))
+            grad = self._render_gradient(w, h)
             mask = pygame.Surface((w, h), pygame.SRCALPHA)
-            pygame.draw.rect(mask, (255, 255, 255, 255), mask.get_rect(), border_radius=radius)
+            pygame.draw.rect(mask, (255, 255, 255, 255), mask.get_rect(),
+                             border_radius=radius)
             grad.blit(mask, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
             surf.blit(grad, (0, 0))
         else:
-            pygame.draw.rect(surf, self.color, surf.get_rect(), border_radius=radius)
+            pygame.draw.rect(surf, self.color, surf.get_rect(),
+                             border_radius=radius)
         return surf
 
-    def _render_linear(self, size):
-        w, h = size
+    def _render_gradient(self, w, h):
+        """Render small then upscale. Per-pixel projection is correct for
+        ANY angle — the old row/column fast path ignored the minor axis, so
+        diagonals came out plain vertical or horizontal."""
         g = self.gradient
-        ang = math.radians(g.angle)
-        dx, dy = math.cos(ang), math.sin(ang)
-
-        corners = [(0,0),(w,0),(0,h),(w,h)]
-        projs = [cx*dx + cy*dy for cx,cy in corners]
-        pmin, pmax = min(projs), max(projs)
-        span = (pmax - pmin) or 1
-
-        strip_res = max(2, int(min(256, max(w, h))))
-        strip = [g.colour_at(i/(strip_res-1)) for i in range(strip_res)]
-        arr = pygame.Surface((w, h), pygame.SRCALPHA)
-
-        if abs(dy) >= abs(dx):
-            for y in range(h):
-                p = (0*dx + y*dy - pmin)/span
-                arr_col = strip[int(clamp(p,0,1)*(strip_res-1))]
-                pygame.draw.line(arr, arr_col, (0,y),(w,y))
+        rw, rh = max(2, min(w, GRAD_RES)), max(2, min(h, GRAD_RES))
+        small = pygame.Surface((rw, rh), pygame.SRCALPHA)
+        if g.type == "radial":
+            cx, cy = (rw - 1) / 2.0, (rh - 1) / 2.0
+            maxd = math.hypot(cx, cy) or 1.0
+            for y in range(rh):
+                for x in range(rw):
+                    t = math.hypot(x - cx, y - cy) / maxd
+                    small.set_at((x, y), g.colour_at(clamp(t, 0.0, 1.0)))
         else:
-            for x in range(w):
-                p = (x*dx + 0*dy - pmin)/span
-                arr_col = strip[int(clamp(p,0,1)*(strip_res-1))]
-                pygame.draw.line(arr, arr_col, (x,0),(x,h))
-        return arr
-
-    def _render_radial(self, size):
-        w, h = size
-        g = self.gradient
-        surf = pygame.Surface((w, h), pygame.SRCALPHA)
-        cx, cy = w/2, h/2
-        maxd = math.hypot(cx, cy) or 1
-        # draw concentric rings outward-in for smoothness
-        steps = max(8, int(maxd))
-        for i in range(steps, 0, -1):
-            t = i/steps
-            col = g.colour_at(t)
-            pygame.draw.circle(surf, col, (int(cx), int(cy)), int(maxd*t)+1)
-        return surf
+            ang = math.radians(g.angle)
+            dx, dy = math.cos(ang), math.sin(ang)
+            projs = [0.0, (rw - 1) * dx, (rh - 1) * dy, (rw - 1) * dx + (rh - 1) * dy]
+            pmin, pmax = min(projs), max(projs)
+            span = (pmax - pmin) or 1.0
+            for y in range(rh):
+                yd = y * dy
+                for x in range(rw):
+                    t = (x * dx + yd - pmin) / span
+                    small.set_at((x, y), g.colour_at(clamp(t, 0.0, 1.0)))
+        return pygame.transform.smoothscale(small, (w, h))
 
 
 class StyleSet:
