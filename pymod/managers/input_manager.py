@@ -20,6 +20,7 @@ class InputManager:
         self._keys_previous: set[int] = set()
 
         self._text_typed: str = ""
+        self._text_typed_pending: str = ""
 
         # mouse state
         self._mouse_buttons_current: set[int] = set()
@@ -28,6 +29,7 @@ class InputManager:
         self._mouse_pos_previous: tuple[int, int] = (0, 0)
         self._mouse_delta: tuple[int, int] = (0, 0)
         self._mouse_wheel: int = 0
+        self._mouse_wheel_pending: int = 0
 
         # gamepad state
         self._gamepads: dict[int, pygame.joystick.Joystick] = {}
@@ -274,7 +276,7 @@ class InputManager:
             True if the key was released this frame, otherwise False.
         """
         keycode = self._resolve_key(key)
-        return key not in self._keys_current and keycode in self._keys_previous
+        return keycode not in self._keys_current and keycode in self._keys_previous
 
     def any_key_pressed(self) -> bool:
         """Checks if any key was pressed this frame.
@@ -507,7 +509,8 @@ class InputManager:
         self._keys_previous = self._keys_current.copy()
         self._mouse_buttons_previous = self._mouse_buttons_current.copy()
         self._mouse_pos_previous = self._mouse_pos
-        self._text_typed = ""
+        self._text_typed = self._text_typed_pending
+        self._text_typed_pending = ""
 
         for gamepad_id in self._gamepad_buttons_current:
             self._gamepad_buttons_previous[gamepad_id] = self._gamepad_buttons_current[gamepad_id].copy()
@@ -526,7 +529,8 @@ class InputManager:
         )
 
         # mouse wheel is reset each frame (handled in handle_event)
-        self._mouse_wheel = 0
+        self._mouse_wheel = self._mouse_wheel_pending
+        self._mouse_wheel_pending = 0
 
         # update gamepad state
         for gamepad_id, gamepad in self._gamepads.items():
@@ -560,18 +564,18 @@ class InputManager:
             elif event.type == pygame.JOYBUTTONDOWN:
                 detected_input = f"gamepad_{event.joy}_button_{event.button}"
 
-            elif event.type == pygame.TEXTINPUT:
-                self._text_typed += event.text
-
             if detected_input:
                 self._listening = False
                 if self._listening_callback:
                     self._listening_callback(detected_input)
                 return  # consume the event, don't process normally
 
+        if event.type == pygame.TEXTINPUT:
+            self._text_typed_pending += event.text
+
         # handle mouse wheel
-        if event.type == pygame.MOUSEWHEEL:
-            self._mouse_wheel = event.y
+        elif event.type == pygame.MOUSEWHEEL:
+            self._mouse_wheel_pending = event.y
 
         # handle gamepad connection/disconnection
         elif event.type == pygame.JOYDEVICEADDED:

@@ -104,7 +104,6 @@ class UIManager:
         if pymod.input.key_pressed("escape"):
             self._focused.focused = False
             self._focused = None
-            pygame.key.stop_text_input()
             return
         for ch in pymod.input.text_typed:
             if ch.isprintable():
@@ -197,19 +196,14 @@ class UIManager:
         # press / release
         from ..components.ui.widgets import UITextInput
 
-        if found is not None:
-            if pymod.input.mouse_pressed("left"):
-                self._pressed = found
-                found._on_press()
-            elif pymod.input.mouse_released("left"):
-                if self._pressed is found:
-                    found._on_release()
-                    found._on_click()
-                self._pressed = None
-        elif pymod.input.mouse_released("left"):
-            if self._pressed is not None:
-                self._pressed._on_release()
-            self._pressed = None
+        if pymod.input.mouse_pressed("left"):
+            new_focus = found if isinstance(found, UITextInput) else None
+            if self._focused is not new_focus:
+                if self._focused is not None:
+                    self._focused.focused = False
+                self._focused = new_focus
+                if new_focus is not None:
+                    new_focus.focused = True
 
 
 

@@ -627,14 +627,20 @@ class UIScrollView(pymod.Component):
         self.scroll_offset=0.0
 
     def update(self):
-        rc=self.owner.get_component(UIRect)
-        if not rc: return
-        mp=pymod.screen.window_to_render_coordinates(pymod.input.mouse_position)
-        if rc.contains_point(*mp):
-            w=pymod.input.mouse_wheel
-            if w:
-                self.scroll_offset=max(0.0, min(max(0,self.content_height-rc.rect.height),
-                                                self.scroll_offset - w*30))
+        rc = self.owner.get_component(UIRect)
+        if not rc:
+            return
+        mp = pymod.screen.window_to_render_coordinates(pymod.input.mouse_position)
+        if not rc.contains_point(*mp):
+            return
+        w = pymod.input.mouse_wheel
+        if isinstance(w, (tuple, list)):  # some inputs report (x, y)
+            w = w[1]
+        if not w:
+            return
+        max_off = max(0, self.content_height - rc.rect.height)
+        self.scroll_offset = max(0.0, min(max_off, self.scroll_offset - w * 30))
+
     def draw_ui(self, surface):
         rc=self.owner.get_component(UIRect)
         if not rc:
