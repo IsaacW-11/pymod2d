@@ -19,6 +19,8 @@ class InputManager:
         self._keys_current: set[int] = set()
         self._keys_previous: set[int] = set()
 
+        self._text_typed: str = ""
+
         # mouse state
         self._mouse_buttons_current: set[int] = set()
         self._mouse_buttons_previous: set[int] = set()
@@ -372,6 +374,11 @@ class InputManager:
         """
         return self._mouse_wheel
 
+    @property
+    def text_typed(self) -> str:
+        """Characters typed this frame, for text fields. Empty most frames."""
+        return self._text_typed
+
     # GAMEPAD INPUT
     def gamepad_button_pressed(self, button: int, gamepad_id: int = 0) -> bool:
         """Check if a gamepad button was pressed this frame.
@@ -500,6 +507,7 @@ class InputManager:
         self._keys_previous = self._keys_current.copy()
         self._mouse_buttons_previous = self._mouse_buttons_current.copy()
         self._mouse_pos_previous = self._mouse_pos
+        self._text_typed = ""
 
         for gamepad_id in self._gamepad_buttons_current:
             self._gamepad_buttons_previous[gamepad_id] = self._gamepad_buttons_current[gamepad_id].copy()
@@ -551,6 +559,9 @@ class InputManager:
                     detected_input = "mouse_right"
             elif event.type == pygame.JOYBUTTONDOWN:
                 detected_input = f"gamepad_{event.joy}_button_{event.button}"
+
+            elif event.type == pygame.TEXTINPUT:
+                self._text_typed += event.text
 
             if detected_input:
                 self._listening = False
