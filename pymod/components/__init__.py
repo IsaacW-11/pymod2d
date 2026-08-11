@@ -15,4 +15,4 @@ from .shape_renderers.polygon_renderer import PolygonRenderer, RegularPolygonRen
 
 from .ui.ui_rect import UIRect, UIAnchor
 from .ui.layouts import LayoutGroup, GridLayout, VerticalLayout, HorizontalLayout
-from .ui.widgets import UIText, UIImage, UIButton, UISlider, UIToggle, UIInteractive
+from .ui.widgets import UIText, UIImage, UIButton, UISlider, UIToggle, UIInteractive, UITextInput, UIIcon, UIDivider, UITooltip, UIDropdown, UIRadioGroup, UIScrollView, UIProgressBar
