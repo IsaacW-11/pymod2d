@@ -16,6 +16,14 @@ class InputManager:
     """
     def __init__(self, default_bindings: dict[str, list] = None):
         # keyboard state
+        # _keys_live is maintained by KEYDOWN/KEYUP events as they arrive.
+        # _keys_current/_keys_previous are the PUBLISHED per-frame snapshots
+        # that key_pressed/key_held/key_released read. They are separate
+        # because Game.run pumps events BEFORE calling _update(): writing
+        # events straight into _keys_current would put a key into both
+        # current and previous on the same frame, so the pressed edge could
+        # never be observed.
+        self._keys_live: set[int] = set()
         self._keys_current: set[int] = set()
         self._keys_previous: set[int] = set()
 
@@ -71,6 +79,20 @@ class InputManager:
             "f5": pygame.K_F5, "f6": pygame.K_F6, "f7": pygame.K_F7, "f8": pygame.K_F8,
             "f9": pygame.K_F9, "f10": pygame.K_F10, "f11": pygame.K_F11, "f12": pygame.K_F12,
             "delete": pygame.K_DELETE, "home": pygame.K_HOME, "end": pygame.K_END,
+            # punctuation — commonly wanted for speed controls and zoom
+            "leftbracket": pygame.K_LEFTBRACKET, "[": pygame.K_LEFTBRACKET,
+            "rightbracket": pygame.K_RIGHTBRACKET, "]": pygame.K_RIGHTBRACKET,
+            "comma": pygame.K_COMMA, ",": pygame.K_COMMA,
+            "period": pygame.K_PERIOD, ".": pygame.K_PERIOD,
+            "minus": pygame.K_MINUS, "-": pygame.K_MINUS,
+            "equals": pygame.K_EQUALS, "=": pygame.K_EQUALS,
+            "semicolon": pygame.K_SEMICOLON, ";": pygame.K_SEMICOLON,
+            "slash": pygame.K_SLASH, "/": pygame.K_SLASH,
+            "backslash": pygame.K_BACKSLASH, "\\": pygame.K_BACKSLASH,
+            "quote": pygame.K_QUOTE, "'": pygame.K_QUOTE,
+            "backquote": pygame.K_BACKQUOTE, "`": pygame.K_BACKQUOTE,
+            "pageup": pygame.K_PAGEUP, "pagedown": pygame.K_PAGEDOWN,
+            "insert": pygame.K_INSERT,
         }
 
         # reverse lookup for keycode -> name
@@ -506,8 +528,18 @@ class InputManager:
     # INTERNAL METHODS
     def _update(self) -> None:
         """Internal method called every frame by Game to update input state."""
+        # Publish the keyboard snapshot.
+        #
+        # Game.run pumps events BEFORE calling this, so KEYDOWN/KEYUP have
+        # already updated _keys_live. Copying _keys_current into _keys_previous
+        # here (as a naive implementation does) would place a freshly pressed
+        # key into BOTH sets on the same frame, and key_pressed — which tests
+        # "in current and not in previous" — could never return True. Keeping
+        # a separate live set and publishing it here preserves the edge.
+        self._keys_previous = self._keys_current
+        self._keys_current = self._keys_live.copy()
+
         # save previous state
-        self._keys_previous = self._keys_current.copy()
         self._mouse_buttons_previous = self._mouse_buttons_current.copy()
         self._mouse_pos_previous = self._mouse_pos
         self._text_typed = self._text_typed_pending
@@ -515,7 +547,6 @@ class InputManager:
 
         for gamepad_id in self._gamepad_buttons_current:
             self._gamepad_buttons_previous[gamepad_id] = self._gamepad_buttons_current[gamepad_id].copy()
-
 
         mouse_buttons = pygame.mouse.get_pressed()
         self._mouse_buttons_current = {i for i in range(len(mouse_buttons)) if mouse_buttons[i]}
@@ -551,15 +582,17 @@ class InputManager:
         # get_pressed() can only be indexed below 512, but arrows, Home/End,
         # modifiers and F-keys all have keycodes above 1073741882, so scanning
         # range(len(get_pressed())) silently drops every one of them.
+        #
+        # These write to _keys_live, NOT _keys_current — see _update().
         if event.type == pygame.KEYDOWN:
-            self._keys_current.add(event.key)
+            self._keys_live.add(event.key)
         elif event.type == pygame.KEYUP:
-            self._keys_current.discard(event.key)
+            self._keys_live.discard(event.key)
 
         # A key held while the window loses focus never delivers its KEYUP,
         # so it would stick down forever. Same for mouse buttons.
         elif event.type == pygame.WINDOWFOCUSLOST:
-            self._keys_current.clear()
+            self._keys_live.clear()
             self._mouse_buttons_current.clear()
 
         # if listening for rebind, intercept first input and stop listening
@@ -628,6 +661,18 @@ class InputManager:
         key_lower = key.lower()
         if key_lower in self._key_names:
             return self._key_names[key_lower]
+
+        # Fall back to SDL's own key names so any key works without having to
+        # be listed above. Cached so the lookup only happens once per name.
+        try:
+            code = pygame.key.key_code(key_lower)
+        except (ValueError, AttributeError):
+            code = None
+        if code:
+            self._key_names[key_lower] = code
+            self._keycode_to_name.setdefault(code, key_lower)
+            return code
+
         raise ValueError(f"Unknown key name: '{key}'")
 
     def _resolve_mouse_button(self, button: int | str) -> int:
