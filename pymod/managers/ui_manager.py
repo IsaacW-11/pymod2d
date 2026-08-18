@@ -41,6 +41,12 @@ class UIManager:
         self._loaded_actions: dict = {}
         self._last_mtime: float = 0.0
 
+        self._repeat_state: dict[str, list[float]] = {}
+        self.key_repeat_delay: float = 0.45   # before repeating starts
+        self.key_repeat_rate: float = 0.04    # between repeats
+
+        self._focused = None
+
         self._debug_font: pygame.font.Font | None = None
 
     # INPUT ROUTING
@@ -96,6 +102,49 @@ class UIManager:
             self._last_mtime = mtime
             self.reload_layout()
 
+    def _repeat_key(self, key: str, action, dt: float) -> None:
+        """Fire `action` once on press, then repeatedly while held.
+
+        Printable characters repeat for free because the OS generates a
+        fresh TEXTINPUT event per repeat. Non-printable keys (backspace,
+        delete, arrows) produce no TEXTINPUT, so they need this.
+        """
+        state = self._repeat_state.setdefault(key, [0.0, 0.0])
+        if pymod.input.key_held(key):
+            if state[0] == 0.0:
+                action()
+                state[1] = self.key_repeat_delay
+            state[0] += dt
+            if state[0] >= state[1]:
+                action()
+                state[1] = state[0] + self.key_repeat_rate
+        else:
+            state[0] = 0.0
+
+    def _forward_text_input(self) -> None:
+        if self._focused is None:
+            self._repeat_state.clear()
+            return
+        if pymod.input.key_pressed("escape"):
+            self._focused.focused = False
+            self._focused = None
+            self._repeat_state.clear()
+            return
+
+        field = self._focused
+        for ch in pymod.input.text_typed:
+            if ch.isprintable():
+                field.type_char(ch)
+
+        # unscaled_delta so text editing still works while the game is paused
+        dt = pymod.time.unscaled_delta
+        self._repeat_key("backspace", field.backspace, dt)
+        self._repeat_key("delete", field.delete_forward, dt)
+        self._repeat_key("left", lambda: field.move_caret(-1), dt)
+        self._repeat_key("right", lambda: field.move_caret(1), dt)
+        self._repeat_key("home", field.caret_home, dt)
+        self._repeat_key("end", field.caret_end, dt)
+
     def _update(self, scene) -> None:
         """Internal method called each frame by Game. Recalculates layout, routes input, and handles hot-reload."""
         self._check_hot_reload()
@@ -107,6 +156,7 @@ class UIManager:
 
         self._recalculate_layout(ui_objects)
         self._route_input(ui_objects)
+        self._forward_text_input()
 
     def _recalculate_layout(self, ui_objects) -> None:
         """Recompute every UIRect top-down, parents before children, then run any layout groups which reposition their children."""
@@ -132,10 +182,10 @@ class UIManager:
             recurse(root)
 
     def _route_input(self, ui_objects) -> None:
-        """Find the topmost interactive element under the mouse and give it hover/press state. \
-        Later objects in the list draw on top, so we search in reverse."""
+        """Find the topmost interactive element under the mouse and give it
+        hover/press state. Later objects draw on top, so search in reverse."""
         from ..components.ui.ui_rect import UIRect
-        from ..components.ui.widgets import UIInteractive
+        from ..components.ui.widgets import UIInteractive, UIDropdown, UITextInput
 
         mouse = pymod.input.mouse_position
         mouse = pymod.Game.get().screen.window_to_render_coordinates(mouse)
@@ -154,6 +204,19 @@ class UIManager:
 
         self._mouse_over_ui = found is not None
 
+        # an expanded dropdown's option list extends below its own rect,
+        # so it isn't caught by the normal hit test
+        for obj in ui_objects:
+            dd = obj.get_component(UIDropdown)
+            if dd is not None and dd.open:
+                rc = obj.get_component(UIRect)
+                if rc is not None:
+                    r = rc.rect
+                    listbox = pygame.Rect(r.left, r.bottom, r.width,
+                                          r.height * len(dd.options))
+                    if listbox.collidepoint(*mouse):
+                        self._mouse_over_ui = True
+
         # hover transitions
         if self._hovered is not found:
             if self._hovered is not None:
@@ -162,16 +225,25 @@ class UIManager:
                 found._on_hover_enter()
             self._hovered = found
 
+        # focus: a click anywhere re-decides which text field owns the keyboard
+        if pymod.input.mouse_pressed("left"):
+            new_focus = found if isinstance(found, UITextInput) else None
+            if self._focused is not new_focus:
+                if self._focused is not None:
+                    self._focused.focused = False
+                self._focused = new_focus
+                if new_focus is not None:
+                    new_focus.focused = True
+
         # press / release
         if found is not None:
             if pymod.input.mouse_pressed("left"):
                 self._pressed = found
                 found._on_press()
-            elif pymod.input.mouse_released("left") and self._pressed is found:
-                print(
-                    f"CLICK fired on {type(found).__name__}, callback: {found.on_click_callback if hasattr(found, 'on_click_callback') else 'n/a'}")
-                found._on_release()
-                found._on_click()
+            elif pymod.input.mouse_released("left"):
+                if self._pressed is found:
+                    found._on_release()
+                    found._on_click()
                 self._pressed = None
         elif pymod.input.mouse_released("left"):
             if self._pressed is not None:
@@ -197,11 +269,41 @@ class UIManager:
                 for component in obj._components.values():
                     if hasattr(component, "draw_ui"):
                         component.draw_ui(surface)
+
+            from ..components.ui.widgets import UIScrollView
+            from ..components.ui.ui_rect import UIRect
+            sv = obj.get_component(UIScrollView)
+            if sv is not None:
+                rc = obj.get_component(UIRect)
+                old_clip = surface.get_clip()
+                surface.set_clip(rc.rect)
+                for child in obj.children:
+                    crc = child.get_component(UIRect)
+                    if crc is not None:
+                        crc._rect.y -= int(sv.scroll_offset)
+                    recurse(child)
+                    if crc is not None:
+                        crc._rect.y += int(sv.scroll_offset)
+                surface.set_clip(old_clip)
+                return
             for child in obj.children:
                 recurse(child)
 
         for root in roots:
             recurse(root)
+
+        # overlay pass — tooltips and open dropdown lists must sit above
+        # everything else regardless of hierarchy order
+        def recurse_overlay(obj):
+            if obj.visible:
+                for component in obj._components.values():
+                    if hasattr(component, "draw_ui_overlay"):
+                        component.draw_ui_overlay(surface)
+            for child in obj.children:
+                recurse_overlay(child)
+
+        for root in roots:
+            recurse_overlay(root)
 
         if self.debug_draw:
             self._draw_debug(surface, ui_objects)
