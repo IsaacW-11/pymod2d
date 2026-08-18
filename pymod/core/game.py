@@ -39,6 +39,17 @@ class Game:
 
     _instance: Game | None = None
 
+    # Fixed-timestep safety limits.
+    #
+    # Without these the accumulator loop below is unstable: running the fixed
+    # steps itself costs real time, which lands in the next frame's delta. Once
+    # the work per step exceeds fixed_delta^2 / frame_time the accumulator grows
+    # every frame and the while loop never exits, so the window stops responding
+    # and has to be killed. Unity exposes the same guard as "Maximum Allowed
+    # Timestep".
+    MAX_FIXED_STEPS: int = 5      # most fixed updates allowed in one frame
+    MAX_FRAME_DELTA: float = 0.25 # never accept more than 250ms from one frame
+
     def __init__(self,
                  screen_config: ScreenConfig = None,
                  time_config: TimeConfig = None,
@@ -105,8 +116,16 @@ class Game:
         self.scenes.push(start_scene)
 
         self.running = True
+        self._accumulator = 0.0
+
         while self.running:
             dt = self._clock.tick(self.fps) / 1000
+
+            # A single very long frame (alt-tab, a debugger breakpoint, a disk
+            # stall) would otherwise inject a huge delta and immediately
+            # overload the fixed-step loop below.
+            if dt > self.MAX_FRAME_DELTA:
+                dt = self.MAX_FRAME_DELTA
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -122,20 +141,24 @@ class Game:
             self.camera._update()
             self.events._flush_queue() # all queued events fire after scenes update
 
-            # fixed update
-            MAX_FIXED_STEPS = 5  # never simulate more than this per frame
+            # fixed update — clamped so it can never spiral
+            self._accumulator += self.time.delta
 
-            accumulator += delta
             steps = 0
-            while accumulator >= self.time.fixed_delta and steps < MAX_FIXED_STEPS:
+            while (self._accumulator >= self.time.fixed_delta
+                   and steps < self.MAX_FIXED_STEPS):
                 self.scenes._fixed_update()
-                accumulator -= self.time.fixed_delta
+                self._accumulator -= self.time.fixed_delta
                 steps += 1
 
-            # if we hit the cap the machine cannot keep up: DISCARD the backlog rather
-            # than trying to catch up, which is what causes the spiral
-            if steps >= MAX_FIXED_STEPS:
-                accumulator = 0.0
+            # Hitting the cap means this machine cannot sustain the fixed rate.
+            # DISCARD the backlog instead of trying to catch up: keeping it
+            # would leave the next frame already behind and the deficit would
+            # compound until the loop never exits. The visible effect is that
+            # simulation runs slightly slow on weak hardware, which is a far
+            # better failure mode than a hard freeze.
+            if steps >= self.MAX_FIXED_STEPS:
+                self._accumulator = 0.0
 
             self.screen.render_surface.fill((0, 0, 0)) # clears previous frames display
             self.camera._render(self.scenes, self.screen.render_surface)
