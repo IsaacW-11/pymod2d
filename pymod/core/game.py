@@ -123,13 +123,19 @@ class Game:
             self.events._flush_queue() # all queued events fire after scenes update
 
             # fixed update
-            self._accumulator += self.time.delta
-            fixed_dt = self.time.fixed_delta
+            MAX_FIXED_STEPS = 5  # never simulate more than this per frame
 
-            while self._accumulator >= fixed_dt:
+            accumulator += delta
+            steps = 0
+            while accumulator >= self.time.fixed_delta and steps < MAX_FIXED_STEPS:
                 self.scenes._fixed_update()
-                self.collision._update()
-                self._accumulator -= fixed_dt
+                accumulator -= self.time.fixed_delta
+                steps += 1
+
+            # if we hit the cap the machine cannot keep up: DISCARD the backlog rather
+            # than trying to catch up, which is what causes the spiral
+            if steps >= MAX_FIXED_STEPS:
+                accumulator = 0.0
 
             self.screen.render_surface.fill((0, 0, 0)) # clears previous frames display
             self.camera._render(self.scenes, self.screen.render_surface)
